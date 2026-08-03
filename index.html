@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Buyers & Holders Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 md:p-8">
+
+    <div class="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-6">
+        <!-- Header -->
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-indigo-400 mb-2">NFT Holders & Buyers Exporter</h1>
+            <p class="text-slate-400 text-sm">Alchemy API ব্যবহার করে সকল হোল্ডার এবং তাদের কেনা NFT এর সংখ্যা বের করুন</p>
+        </div>
+
+        <!-- Configuration Inputs -->
+        <div class="space-y-4 mb-6 bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Alchemy API Endpoint URL</label>
+                <input id="apiUrl" type="text" 
+                       value="https://robinhood-mainnet.g.alchemy.com/v2/alch_NhKEi-ICXC5cch2V8aHeF" 
+                       class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Contract Address</label>
+                <input id="contractAddress" type="text" 
+                       value="0x68e5a6aaf2503940f0337243063ab8f4da6bedec" 
+                       class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-emerald-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+        </div>
+
+        <!-- Action Buttons & Status -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+            <button id="fetchBtn" onclick="fetchHolders()" 
+                    class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30">
+                <span>ডাটা ফেচ করুন</span>
+            </button>
+
+            <button id="downloadBtn" onclick="downloadCSV()" disabled 
+                    class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>CSV ডাউনলোড করুন</span>
+            </button>
+        </div>
+
+        <!-- Status / Counter Indicator -->
+        <div id="statusMessage" class="hidden mb-4 p-3 rounded-lg text-sm text-center bg-slate-700/50 border border-slate-600"></div>
+
+        <!-- Data Summary -->
+        <div id="summaryCards" class="hidden grid grid-cols-2 gap-4 mb-6">
+            <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
+                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ইউনিক বায়িার্স/হোল্ডার</span>
+                <span id="totalHoldersCount" class="text-2xl font-bold text-indigo-400">0</span>
+            </div>
+            <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
+                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট সংগৃহীত NFT সংখ্যা</span>
+                <span id="totalNFTsCount" class="text-2xl font-bold text-emerald-400">0</span>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto rounded-lg border border-slate-700">
+            <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-900 text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700">
+                    <tr>
+                        <th scope="col" class="py-3 px-4 w-16 text-center">#</th>
+                        <th scope="col" class="py-3 px-4">Wallet Address</th>
+                        <th scope="col" class="py-3 px-4 text-right">NFT Count</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-700/60 bg-slate-800/50">
+                    <tr>
+                        <td colspan="3" class="text-center py-8 text-slate-500">
+                            "ডাটা ফেচ করুন" বাটনে ক্লিক করে লিস্ট নিয়ে আসুন।
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Script Section -->
+    <script>
+        let holdersData = []; // [{ ownerAddress: "0x...", count: 2 }]
+
+        async function fetchHolders() {
+            const baseUrl = document.getElementById('apiUrl').value.trim();
+            const contractAddress = document.getElementById('contractAddress').value.trim();
+            const fetchBtn = document.getElementById('fetchBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const statusMessage = document.getElementById('statusMessage');
+            const tableBody = document.getElementById('tableBody');
+            const summaryCards = document.getElementById('summaryCards');
+
+            if (!baseUrl || !contractAddress) {
+                alert("দয়া করে API URL এবং Contract Address ফিল্ড দুটি পূরণ করুন।");
+                return;
+            }
+
+            // Reset States
+            holdersData = [];
+            downloadBtn.disabled = true;
+            fetchBtn.disabled = true;
+            fetchBtn.innerText = "ডাটা আনা হচ্ছে...";
+            statusMessage.classList.remove('hidden');
+            statusMessage.innerText = "Alchemy API থেকে ডাটা লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...";
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-indigo-400 animate-pulse">ডাটা প্রসেস করা হচ্ছে...</td></tr>`;
+
+            let pageKey = null;
+            let totalNFTs = 0;
+
+            try {
+                do {
+                    // Alchemy getOwnersForContract endpoint format
+                    let url = `${baseUrl}/getOwnersForContract?contractAddress=${contractAddress}&withTokenBalances=true`;
+                    if (pageKey) {
+                        url += `&pageKey=${pageKey}`;
+                    }
+
+                    const response = await fetch(url, { method: 'GET' });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Response Error: ${response.status} ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.ownerAddresses && data.ownerAddresses.length > 0) {
+                        data.ownerAddresses.forEach(item => {
+                            // Calculate number of NFTs for each wallet address
+                            const nftCount = item.tokenBalances ? item.tokenBalances.reduce((sum, token) => sum + (parseInt(token.balance) || 1), 0) : 1;
+                            
+                            holdersData.push({
+                                address: item.ownerAddress,
+                                count: nftCount
+                            });
+
+                            totalNFTs += nftCount;
+                        });
+                    }
+
+                    pageKey = data.pageKey || null;
+
+                } while (pageKey);
+
+                // Render Table & Summary
+                if (holdersData.length > 0) {
+                    tableBody.innerHTML = holdersData.map((row, index) => `
+                        <tr class="hover:bg-slate-700/40 transition-colors">
+                            <td class="py-2.5 px-4 text-center font-mono text-slate-500">${index + 1}</td>
+                            <td class="py-2.5 px-4 font-mono text-indigo-300 select-all">${row.address}</td>
+                            <td class="py-2.5 px-4 text-right font-semibold text-emerald-400">${row.count}</td>
+                        </tr>
+                    `).join('');
+
+                    document.getElementById('totalHoldersCount').innerText = holdersData.length.toLocaleString();
+                    document.getElementById('totalNFTsCount').innerText = totalNFTs.toLocaleString();
+                    summaryCards.classList.remove('hidden');
+
+                    statusMessage.innerText = `সফলভাবে ${holdersData.length} জন হোল্ডারের তথ্য সংগ্রহ করা হয়েছে!`;
+                    downloadBtn.disabled = false;
+                } else {
+                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-amber-400">কোনো হোল্ডার ডাটা পাওয়া যায়নি।</td></tr>`;
+                    statusMessage.innerText = "কোনো রেকর্ড পাওয়া যায়নি।";
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusMessage.innerText = "ত্রুটি ঘটেছে: " + error.message;
+                tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-rose-400">ডাটা লোড করতে সমস্যা হয়েছে। কনসোল লগে বিস্তারিত দেখুন।</td></tr>`;
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.innerText = "ডাটা ফেচ করুন";
+            }
+        }
+
+        function downloadCSV() {
+            if (holdersData.length === 0) return;
+
+            let csvContent = "data:text/csv;charset=utf-8,Wallet Address,NFT Count\n";
+
+            holdersData.forEach(row => {
+                csvContent += `"${row.address}",${row.count}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `nft_holders_${document.getElementById('contractAddress').value.substring(0, 8)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
