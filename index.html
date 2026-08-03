@@ -13,7 +13,7 @@
         <!-- Header -->
         <div class="mb-6 text-center">
             <h1 class="text-3xl font-bold text-indigo-400 mb-2">NFT Holders & Buyers Exporter</h1>
-            <p class="text-slate-400 text-sm">Alchemy API ব্যবহার করে সকল হোল্ডার এবং তাদের কেনা NFT এর সংখ্যা বের করুন</p>
+            <p class="text-slate-400 text-sm">Alchemy RPC ব্যবহার করে সকল ক্রেতা/হোল্ডারদের তথ্য বের করুন</p>
         </div>
 
         <!-- Configuration Inputs -->
@@ -48,17 +48,17 @@
             </button>
         </div>
 
-        <!-- Status / Counter Indicator -->
+        <!-- Status Indicator -->
         <div id="statusMessage" class="hidden mb-4 p-3 rounded-lg text-sm text-center bg-slate-700/50 border border-slate-600"></div>
 
-        <!-- Data Summary -->
+        <!-- Summary Cards -->
         <div id="summaryCards" class="hidden grid grid-cols-2 gap-4 mb-6">
             <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
-                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ইউনিক বায়িার্স/হোল্ডার</span>
+                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ইউনিক বায়ার্স</span>
                 <span id="totalHoldersCount" class="text-2xl font-bold text-indigo-400">0</span>
             </div>
             <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
-                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট সংগৃহীত NFT সংখ্যা</span>
+                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ট্রান্সফারড NFT</span>
                 <span id="totalNFTsCount" class="text-2xl font-bold text-emerald-400">0</span>
             </div>
         </div>
@@ -86,10 +86,10 @@
 
     <!-- Script Section -->
     <script>
-        let holdersData = []; // [{ ownerAddress: "0x...", count: 2 }]
+        let holdersData = [];
 
         async function fetchHolders() {
-            const baseUrl = document.getElementById('apiUrl').value.trim();
+            const apiUrl = document.getElementById('apiUrl').value.trim();
             const contractAddress = document.getElementById('contractAddress').value.trim();
             const fetchBtn = document.getElementById('fetchBtn');
             const downloadBtn = document.getElementById('downloadBtn');
@@ -97,8 +97,8 @@
             const tableBody = document.getElementById('tableBody');
             const summaryCards = document.getElementById('summaryCards');
 
-            if (!baseUrl || !contractAddress) {
-                alert("দয়া করে API URL এবং Contract Address ফিল্ড দুটি পূরণ করুন।");
+            if (!apiUrl || !contractAddress) {
+                alert("দয়া করে API URL এবং Contract Address সঠিক ভাবে দিন।");
                 return;
             }
 
@@ -106,49 +106,74 @@
             holdersData = [];
             downloadBtn.disabled = true;
             fetchBtn.disabled = true;
-            fetchBtn.innerText = "ডাটা আনা হচ্ছে...";
+            fetchBtn.innerText = "ডাটা প্রসেস হচ্ছে...";
             statusMessage.classList.remove('hidden');
-            statusMessage.innerText = "Alchemy API থেকে ডাটা লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...";
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-indigo-400 animate-pulse">ডাটা প্রসেস করা হচ্ছে...</td></tr>`;
+            statusMessage.innerText = "Alchemy RPC দিয়ে ট্রান্সফার হিস্ট্রি লোড করা হচ্ছে...";
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-indigo-400 animate-pulse">অন-চেইন ট্রান্সফার ইভেন্ট প্রসেস করা হচ্ছে...</td></tr>`;
 
             let pageKey = null;
-            let totalNFTs = 0;
+            const walletBalances = {}; // { walletAddress: count }
 
             try {
                 do {
-                    // Alchemy getOwnersForContract endpoint format
-                    let url = `${baseUrl}/getOwnersForContract?contractAddress=${contractAddress}&withTokenBalances=true`;
-                    if (pageKey) {
-                        url += `&pageKey=${pageKey}`;
-                    }
+                    // JSON-RPC Request Payload
+                    const payload = {
+                        id: 1,
+                        jsonrpc: "2.0",
+                        method: "alchemy_getAssetTransfers",
+                        params: [{
+                            fromBlock: "0x0",
+                            toBlock: "latest",
+                            contractAddresses: [contractAddress],
+                            category: ["erc721", "erc1155"],
+                            excludeZeroValue: true,
+                            maxCount: "0x3e8", // 1000 items per call
+                            pageKey: pageKey
+                        }]
+                    };
 
-                    const response = await fetch(url, { method: 'GET' });
-                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
                     if (!response.ok) {
-                        throw new Error(`API Response Error: ${response.status} ${response.statusText}`);
+                        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
                     }
 
-                    const data = await response.json();
+                    const resData = await response.json();
 
-                    if (data.ownerAddresses && data.ownerAddresses.length > 0) {
-                        data.ownerAddresses.forEach(item => {
-                            // Calculate number of NFTs for each wallet address
-                            const nftCount = item.tokenBalances ? item.tokenBalances.reduce((sum, token) => sum + (parseInt(token.balance) || 1), 0) : 1;
-                            
-                            holdersData.push({
-                                address: item.ownerAddress,
-                                count: nftCount
-                            });
+                    if (resData.error) {
+                        throw new Error(resData.error.message || "RPC Response Error");
+                    }
 
-                            totalNFTs += nftCount;
+                    const result = resData.result;
+                    if (result && result.transfers) {
+                        result.transfers.forEach(tx => {
+                            const recipient = tx.to;
+                            if (recipient && recipient !== "0x0000000000000000000000000000000000000000") {
+                                walletBalances[recipient] = (walletBalances[recipient] || 0) + 1;
+                            }
                         });
                     }
 
-                    pageKey = data.pageKey || null;
+                    pageKey = result ? result.pageKey : null;
 
                 } while (pageKey);
 
-                // Render Table & Summary
+                // Format JSON into array
+                holdersData = Object.keys(walletBalances).map(address => ({
+                    address: address,
+                    count: walletBalances[address]
+                }));
+
+                // Sort descending by count
+                holdersData.sort((a, b) => b.count - a.count);
+
+                const totalNFTs = holdersData.reduce((sum, item) => sum + item.count, 0);
+
+                // Render UI
                 if (holdersData.length > 0) {
                     tableBody.innerHTML = holdersData.map((row, index) => `
                         <tr class="hover:bg-slate-700/40 transition-colors">
@@ -162,17 +187,17 @@
                     document.getElementById('totalNFTsCount').innerText = totalNFTs.toLocaleString();
                     summaryCards.classList.remove('hidden');
 
-                    statusMessage.innerText = `সফলভাবে ${holdersData.length} জন হোল্ডারের তথ্য সংগ্রহ করা হয়েছে!`;
+                    statusMessage.innerText = `সফলভাবে ${holdersData.length} জন বায়াইং ওয়ালেটের তথ্য বের করা হয়েছে!`;
                     downloadBtn.disabled = false;
                 } else {
-                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-amber-400">কোনো হোল্ডার ডাটা পাওয়া যায়নি।</td></tr>`;
-                    statusMessage.innerText = "কোনো রেকর্ড পাওয়া যায়নি।";
+                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-amber-400">এই কনট্র্যাক্টের জন্য কোনো NFT ট্রান্সফার পাওয়া যায়নি।</td></tr>`;
+                    statusMessage.innerText = "কোনো ডাটা পাওয়া যায়নি।";
                 }
 
             } catch (error) {
                 console.error(error);
                 statusMessage.innerText = "ত্রুটি ঘটেছে: " + error.message;
-                tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-rose-400">ডাটা লোড করতে সমস্যা হয়েছে। কনসোল লগে বিস্তারিত দেখুন।</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-rose-400">ডাটা লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।</td></tr>`;
             } finally {
                 fetchBtn.disabled = false;
                 fetchBtn.innerText = "ডাটা ফেচ করুন";
@@ -191,7 +216,7 @@
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `nft_holders_${document.getElementById('contractAddress').value.substring(0, 8)}.csv`);
+            link.setAttribute("download", `nft_buyers_${document.getElementById('contractAddress').value.substring(0, 8)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
