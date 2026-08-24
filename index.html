@@ -1,226 +1,251 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NFT Buyers & Holders Tracker</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NFT Fetcher & Downloader</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      color: #38bdf8;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1e293b;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    button {
+      background-color: #0284c7;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background-color: #0369a1;
+    }
+    button:disabled {
+      background-color: #475569;
+      cursor: not-allowed;
+    }
+    #status {
+      font-weight: bold;
+      color: #facc15;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      border: 1px solid #334155;
+    }
+    .card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 5px;
+      background-color: #0f172a;
+    }
+    .card h4 {
+      margin: 10px 0 5px 0;
+      font-size: 14px;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card p {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+  </style>
+  <!-- JSZip and FileSaver for Zip functionality -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 md:p-8">
+<body>
 
-    <div class="max-w-4xl w-full bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-6">
-        <!-- Header -->
-        <div class="mb-6 text-center">
-            <h1 class="text-3xl font-bold text-indigo-400 mb-2">NFT Holders & Buyers Exporter</h1>
-            <p class="text-slate-400 text-sm">Alchemy RPC ব্যবহার করে সকল ক্রেতা/হোল্ডারদের তথ্য বের করুন</p>
-        </div>
-
-        <!-- Configuration Inputs -->
-        <div class="space-y-4 mb-6 bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-            <div>
-                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Alchemy API Endpoint URL</label>
-                <input id="apiUrl" type="text" 
-                       value="https://robinhood-mainnet.g.alchemy.com/v2/alch_NhKEi-ICXC5cch2V8aHeF" 
-                       class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">Contract Address</label>
-                <input id="contractAddress" type="text" 
-                       value="0x68e5a6aaf2503940f0337243063ab8f4da6bedec" 
-                       class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-sm text-emerald-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            </div>
-        </div>
-
-        <!-- Action Buttons & Status -->
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-            <button id="fetchBtn" onclick="fetchHolders()" 
-                    class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30">
-                <span>ডাটা ফেচ করুন</span>
-            </button>
-
-            <button id="downloadBtn" onclick="downloadCSV()" disabled 
-                    class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                <span>CSV ডাউনলোড করুন</span>
-            </button>
-        </div>
-
-        <!-- Status Indicator -->
-        <div id="statusMessage" class="hidden mb-4 p-3 rounded-lg text-sm text-center bg-slate-700/50 border border-slate-600"></div>
-
-        <!-- Summary Cards -->
-        <div id="summaryCards" class="hidden grid grid-cols-2 gap-4 mb-6">
-            <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
-                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ইউনিক বায়ার্স</span>
-                <span id="totalHoldersCount" class="text-2xl font-bold text-indigo-400">0</span>
-            </div>
-            <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-700 text-center">
-                <span class="text-xs text-slate-400 uppercase tracking-wider block mb-1">মোট ট্রান্সফারড NFT</span>
-                <span id="totalNFTsCount" class="text-2xl font-bold text-emerald-400">0</span>
-            </div>
-        </div>
-
-        <!-- Table Container -->
-        <div class="overflow-x-auto rounded-lg border border-slate-700">
-            <table class="w-full text-left text-sm text-slate-300">
-                <thead class="bg-slate-900 text-slate-400 uppercase text-xs tracking-wider border-b border-slate-700">
-                    <tr>
-                        <th scope="col" class="py-3 px-4 w-16 text-center">#</th>
-                        <th scope="col" class="py-3 px-4">Wallet Address</th>
-                        <th scope="col" class="py-3 px-4 text-right">NFT Count</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody" class="divide-y divide-slate-700/60 bg-slate-800/50">
-                    <tr>
-                        <td colspan="3" class="text-center py-8 text-slate-500">
-                            "ডাটা ফেচ করুন" বাটনে ক্লিক করে লিস্ট নিয়ে আসুন।
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+<div class="container">
+  <h1>Ethereum NFT Downloader</h1>
+  
+  <div class="controls">
+    <div>
+      <span id="status">প্রস্তুত...</span>
     </div>
+    <div>
+      <button id="fetchBtn" onclick="fetchAllNFTs()">NFT লোড করুন</button>
+      <button id="downloadBtn" onclick="downloadAsZip()" disabled>ZIP ডাউনলোড করুন</button>
+    </div>
+  </div>
 
-    <!-- Script Section -->
-    <script>
-        let holdersData = [];
+  <div id="nftGrid" class="grid"></div>
+</div>
 
-        async function fetchHolders() {
-            const apiUrl = document.getElementById('apiUrl').value.trim();
-            const contractAddress = document.getElementById('contractAddress').value.trim();
-            const fetchBtn = document.getElementById('fetchBtn');
-            const downloadBtn = document.getElementById('downloadBtn');
-            const statusMessage = document.getElementById('statusMessage');
-            const tableBody = document.getElementById('tableBody');
-            const summaryCards = document.getElementById('summaryCards');
+<script>
+  const apiKey = "alch_NBTMkyeepw_LMRNNn7Ytc";
+  const contractAddress = "0x4addac15971ab60ead954b8f15a67518730450e0";
+  const baseUrl = `https://eth-mainnet.g.alchemy.com/v2/${apiKey}/getNFTsForContract`;
 
-            if (!apiUrl || !contractAddress) {
-                alert("দয়া করে API URL এবং Contract Address সঠিক ভাবে দিন।");
-                return;
-            }
+  let fetchedNFTs = [];
 
-            // Reset States
-            holdersData = [];
-            downloadBtn.disabled = true;
-            fetchBtn.disabled = true;
-            fetchBtn.innerText = "ডাটা প্রসেস হচ্ছে...";
-            statusMessage.classList.remove('hidden');
-            statusMessage.innerText = "Alchemy RPC দিয়ে ট্রান্সফার হিস্ট্রি লোড করা হচ্ছে...";
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-indigo-400 animate-pulse">অন-চেইন ট্রান্সফার ইভেন্ট প্রসেস করা হচ্ছে...</td></tr>`;
+  // IPFS URL conversion
+  function resolveUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('ipfs://')) {
+      return url.replace('ipfs://', 'https://ipfs.io/ipfs/');
+    }
+    return url;
+  }
 
-            let pageKey = null;
-            const walletBalances = {}; // { walletAddress: count }
+  // Fetch all NFTs using Pagination
+  async function fetchAllNFTs() {
+    const fetchBtn = document.getElementById('fetchBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const status = document.getElementById('status');
+    const grid = document.getElementById('nftGrid');
 
-            try {
-                do {
-                    // JSON-RPC Request Payload
-                    const payload = {
-                        id: 1,
-                        jsonrpc: "2.0",
-                        method: "alchemy_getAssetTransfers",
-                        params: [{
-                            fromBlock: "0x0",
-                            toBlock: "latest",
-                            contractAddresses: [contractAddress],
-                            category: ["erc721", "erc1155"],
-                            excludeZeroValue: true,
-                            maxCount: "0x3e8", // 1000 items per call
-                            pageKey: pageKey
-                        }]
-                    };
+    fetchBtn.disabled = true;
+    downloadBtn.disabled = true;
+    grid.innerHTML = '';
+    fetchedNFTs = [];
 
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
+    let pageKey = null;
+    let totalLoaded = 0;
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP Error: ${response.status} - ${response.statusText}`);
-                    }
-
-                    const resData = await response.json();
-
-                    if (resData.error) {
-                        throw new Error(resData.error.message || "RPC Response Error");
-                    }
-
-                    const result = resData.result;
-                    if (result && result.transfers) {
-                        result.transfers.forEach(tx => {
-                            const recipient = tx.to;
-                            if (recipient && recipient !== "0x0000000000000000000000000000000000000000") {
-                                walletBalances[recipient] = (walletBalances[recipient] || 0) + 1;
-                            }
-                        });
-                    }
-
-                    pageKey = result ? result.pageKey : null;
-
-                } while (pageKey);
-
-                // Format JSON into array
-                holdersData = Object.keys(walletBalances).map(address => ({
-                    address: address,
-                    count: walletBalances[address]
-                }));
-
-                // Sort descending by count
-                holdersData.sort((a, b) => b.count - a.count);
-
-                const totalNFTs = holdersData.reduce((sum, item) => sum + item.count, 0);
-
-                // Render UI
-                if (holdersData.length > 0) {
-                    tableBody.innerHTML = holdersData.map((row, index) => `
-                        <tr class="hover:bg-slate-700/40 transition-colors">
-                            <td class="py-2.5 px-4 text-center font-mono text-slate-500">${index + 1}</td>
-                            <td class="py-2.5 px-4 font-mono text-indigo-300 select-all">${row.address}</td>
-                            <td class="py-2.5 px-4 text-right font-semibold text-emerald-400">${row.count}</td>
-                        </tr>
-                    `).join('');
-
-                    document.getElementById('totalHoldersCount').innerText = holdersData.length.toLocaleString();
-                    document.getElementById('totalNFTsCount').innerText = totalNFTs.toLocaleString();
-                    summaryCards.classList.remove('hidden');
-
-                    statusMessage.innerText = `সফলভাবে ${holdersData.length} জন বায়াইং ওয়ালেটের তথ্য বের করা হয়েছে!`;
-                    downloadBtn.disabled = false;
-                } else {
-                    tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-amber-400">এই কনট্র্যাক্টের জন্য কোনো NFT ট্রান্সফার পাওয়া যায়নি।</td></tr>`;
-                    statusMessage.innerText = "কোনো ডাটা পাওয়া যায়নি।";
-                }
-
-            } catch (error) {
-                console.error(error);
-                statusMessage.innerText = "ত্রুটি ঘটেছে: " + error.message;
-                tableBody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-rose-400">ডাটা লোড করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।</td></tr>`;
-            } finally {
-                fetchBtn.disabled = false;
-                fetchBtn.innerText = "ডাটা ফেচ করুন";
-            }
+    try {
+      do {
+        status.innerText = `তথ্য লোড হচ্ছে... (মোট: ${totalLoaded})`;
+        
+        let url = `${baseUrl}?contractAddress=${contractAddress}&withMetadata=true`;
+        if (pageKey) {
+          url += `&pageKey=${pageKey}`;
         }
 
-        function downloadCSV() {
-            if (holdersData.length === 0) return;
+        const response = await fetch(url);
+        const data = await response.json();
 
-            let csvContent = "data:text/csv;charset=utf-8,Wallet Address,NFT Count\n";
-
-            holdersData.forEach(row => {
-                csvContent += `"${row.address}",${row.count}\n`;
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `nft_buyers_${document.getElementById('contractAddress').value.substring(0, 8)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        if (data.nfts && data.nfts.length > 0) {
+          for (let nft of data.nfts) {
+            fetchedNFTs.push(nft);
+            renderNFTCard(nft);
+          }
+          totalLoaded = fetchedNFTs.length;
         }
-    </script>
+
+        pageKey = data.pageKey;
+      } while (pageKey);
+
+      status.innerText = `সম্পূর্ণ হয়েছে! মোট ${totalLoaded} টি NFT পাওয়া গেছে।`;
+      if (fetchedNFTs.length > 0) {
+        downloadBtn.disabled = false;
+      }
+    } catch (error) {
+      console.error(error);
+      status.innerText = "ডাটা লোড করতে সমস্যা হয়েছে।";
+    } finally {
+      fetchBtn.disabled = false;
+    }
+  }
+
+  // Render NFT Card
+  function renderNFTCard(nft) {
+    const grid = document.getElementById('nftGrid');
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const tokenId = parseInt(nft.id.tokenId, 16); // Convert Hex to Decimal
+    const title = nft.title || `NFT #${tokenId}`;
+    
+    // Image fallback priority
+    let imageUrl = nft.media?.[0]?.gateway || nft.metadata?.image || '';
+    imageUrl = resolveUrl(imageUrl);
+
+    card.innerHTML = `
+      <img src="${imageUrl || 'https://via.placeholder.com/200?text=No+Image'}" alt="${title}" onerror="this.src='https://via.placeholder.com/200?text=Image+Error'">
+      <h4>${title}</h4>
+      <p>ID: ${tokenId}</p>
+    `;
+
+    grid.appendChild(card);
+  }
+
+  // Download Images & Metadata in a ZIP File
+  async function downloadAsZip() {
+    const downloadBtn = document.getElementById('downloadBtn');
+    const status = document.getElementById('status');
+    
+    downloadBtn.disabled = true;
+    status.innerText = "ZIP ফাইল তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...";
+
+    const zip = new JSZip();
+    const imagesFolder = zip.folder("images");
+    const metadataFolder = zip.folder("metadata");
+
+    let completed = 0;
+
+    for (let nft of fetchedNFTs) {
+      const tokenId = parseInt(nft.id.tokenId, 16);
+      
+      // Save Metadata JSON
+      metadataFolder.file(`${tokenId}.json`, JSON.stringify(nft, null, 2));
+
+      // Fetch and Save Image
+      let imageUrl = nft.media?.[0]?.gateway || nft.metadata?.image || '';
+      imageUrl = resolveUrl(imageUrl);
+
+      if (imageUrl) {
+        try {
+          const imageResponse = await fetch(imageUrl);
+          const blob = await imageResponse.blob();
+          
+          // Extension detection based on content type
+          let ext = 'png';
+          if (blob.type.includes('jpeg')) ext = 'jpg';
+          else if (blob.type.includes('gif')) ext = 'gif';
+          else if (blob.type.includes('svg')) ext = 'svg';
+
+          imagesFolder.file(`${tokenId}.${ext}`, blob);
+        } catch (err) {
+          console.error(`ছবি ডাউনলোড করতে ব্যর্থ Token ID ${tokenId}:`, err);
+        }
+      }
+
+      completed++;
+      status.innerText = `ZIP তৈরি হচ্ছে: ${completed} / ${fetchedNFTs.length}`;
+    }
+
+    status.innerText = "ZIP ফাইল কম্প্রেস করা হচ্ছে...";
+    zip.generateAsync({ type: "blob" }).then(function(content) {
+      saveAs(content, `NFT_Collection_${contractAddress}.zip`);
+      status.innerText = "ডাউনলোড সফল হয়েছে!";
+      downloadBtn.disabled = false;
+    });
+  }
+</script>
+
 </body>
 </html>
