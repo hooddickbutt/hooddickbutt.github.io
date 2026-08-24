@@ -3,102 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NFT Fetcher & Downloader</title>
+  <title>Pro NFT Bulk Downloader & Viewer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0f172a;
-      color: #f8fafc;
+    * {
+      box-sizing: border-box;
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      background: #090d16;
+      color: #f1f5f9;
+      padding: 30px 15px;
+      min-height: 100vh;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1400px;
       margin: 0 auto;
     }
-    h1 {
+    header {
       text-align: center;
-      color: #38bdf8;
+      margin-bottom: 30px;
     }
-    .controls {
+    header h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    header p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+    .dashboard {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid #334155;
+      padding: 20px;
+      border-radius: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #1e293b;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+    .status-box {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #38bdf8;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
     }
     button {
-      background-color: #0284c7;
-      color: white;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #fff;
       border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 5px;
+      padding: 12px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.3s;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      transition: all 0.2s ease;
     }
-    button:hover {
-      background-color: #0369a1;
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
     }
     button:disabled {
-      background-color: #475569;
+      background: #334155;
+      color: #64748b;
       cursor: not-allowed;
-    }
-    #status {
-      font-weight: bold;
-      color: #facc15;
+      box-shadow: none;
     }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 15px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
     }
     .card {
       background: #1e293b;
-      border-radius: 8px;
-      padding: 10px;
-      text-align: center;
       border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      flex-direction: column;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: #38bdf8;
+      box-shadow: 0 12px 20px -5px rgba(56, 189, 248, 0.15);
+    }
+    .img-wrapper {
+      width: 100%;
+      height: 260px;
+      background: #0f172a;
+      position: relative;
     }
     .card img {
       width: 100%;
-      height: 180px;
+      height: 100%;
       object-fit: cover;
-      border-radius: 5px;
-      background-color: #0f172a;
+      display: block;
     }
-    .card h4 {
-      margin: 10px 0 5px 0;
-      font-size: 14px;
-      color: #e2e8f0;
+    .card-info {
+      padding: 15px;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .card-info h3 {
+      font-size: 1.05rem;
+      color: #f8fafc;
+      margin-bottom: 6px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .card p {
-      margin: 0;
-      font-size: 12px;
+    .card-info .token-id {
+      font-size: 0.85rem;
       color: #94a3b8;
+      font-weight: 600;
     }
   </style>
-  <!-- JSZip and FileSaver for Zip functionality -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
 
 <div class="container">
-  <h1>Ethereum NFT Downloader</h1>
+  <header>
+    <h1>Ethereum Mainnet NFT Downloader</h1>
+    <p>কন্ট্রাক্ট: 0x4addac15971ab60ead954b8f15a67518730450e0</p>
+  </header>
   
-  <div class="controls">
-    <div>
-      <span id="status">প্রস্তুত...</span>
-    </div>
-    <div>
-      <button id="fetchBtn" onclick="fetchAllNFTs()">NFT লোড করুন</button>
-      <button id="downloadBtn" onclick="downloadAsZip()" disabled>ZIP ডাউনলোড করুন</button>
+  <div class="dashboard">
+    <div class="status-box" id="status">স্ট্যাটাস: ১০০০+ NFT লোডের জন্য প্রস্তুত</div>
+    <div class="btn-group">
+      <button id="fetchBtn" onclick="startFetching()">সবগুলো (১০০০+) লোড করুন</button>
+      <button id="downloadBtn" onclick="downloadZip()" disabled>ZIP ডাউনলোড</button>
     </div>
   </div>
 
@@ -110,19 +161,19 @@
   const contractAddress = "0x4addac15971ab60ead954b8f15a67518730450e0";
   const baseUrl = `https://eth-mainnet.g.alchemy.com/v2/${apiKey}/getNFTsForContract`;
 
-  let fetchedNFTs = [];
+  let allNFTs = [];
 
-  // IPFS URL conversion
-  function resolveUrl(url) {
+  // IPFS & Cloudflare Gateways Handling for High Quality
+  function fixImageUrl(url) {
     if (!url) return '';
     if (url.startsWith('ipfs://')) {
-      return url.replace('ipfs://', 'https://ipfs.io/ipfs/');
+      return url.replace('ipfs://', 'https://cloudflare-ipfs.com/ipfs/');
     }
     return url;
   }
 
-  // Fetch all NFTs using Pagination
-  async function fetchAllNFTs() {
+  // Fetch ALL NFTs recursively through pagination
+  async function startFetching() {
     const fetchBtn = document.getElementById('fetchBtn');
     const downloadBtn = document.getElementById('downloadBtn');
     const status = document.getElementById('status');
@@ -131,117 +182,124 @@
     fetchBtn.disabled = true;
     downloadBtn.disabled = true;
     grid.innerHTML = '';
-    fetchedNFTs = [];
+    allNFTs = [];
 
     let pageKey = null;
-    let totalLoaded = 0;
+    let pageCount = 0;
 
     try {
       do {
-        status.innerText = `তথ্য লোড হচ্ছে... (মোট: ${totalLoaded})`;
+        pageCount++;
+        status.innerText = `তথ্য লোড হচ্ছে... (মোট লোড হয়েছে: ${allNFTs.length} টি)`;
         
-        let url = `${baseUrl}?contractAddress=${contractAddress}&withMetadata=true`;
+        let url = `${baseUrl}?contractAddress=${contractAddress}&withMetadata=true&limit=100`;
         if (pageKey) {
           url += `&pageKey=${pageKey}`;
         }
 
-        const response = await fetch(url);
-        const data = await response.json();
+        const res = await fetch(url);
+        const data = await res.json();
 
         if (data.nfts && data.nfts.length > 0) {
-          for (let nft of data.nfts) {
-            fetchedNFTs.push(nft);
-            renderNFTCard(nft);
-          }
-          totalLoaded = fetchedNFTs.length;
+          data.nfts.forEach(nft => {
+            allNFTs.push(nft);
+            appendNFTCard(nft);
+          });
         }
 
-        pageKey = data.pageKey;
+        pageKey = data.pageKey; // Next Page Key loop update
       } while (pageKey);
 
-      status.innerText = `সম্পূর্ণ হয়েছে! মোট ${totalLoaded} টি NFT পাওয়া গেছে।`;
-      if (fetchedNFTs.length > 0) {
-        downloadBtn.disabled = false;
-      }
-    } catch (error) {
-      console.error(error);
-      status.innerText = "ডাটা লোড করতে সমস্যা হয়েছে।";
+      status.innerText = `সম্পূর্ণ হয়েছে! মোট ${allNFTs.length} টি NFT ডাটাবেজ থেকে লোড করা হয়েছে।`;
+      downloadBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      status.innerText = "ত্রুটি: ডাটা লোড করা সম্ভব হয়নি। Alchemy API লিমিট বা নেটওয়ার্ক চেক করুন।";
     } finally {
       fetchBtn.disabled = false;
     }
   }
 
-  // Render NFT Card
-  function renderNFTCard(nft) {
+  // Render Premium Quality Cards
+  function appendNFTCard(nft) {
     const grid = document.getElementById('nftGrid');
     const card = document.createElement('div');
     card.className = 'card';
 
-    const tokenId = parseInt(nft.id.tokenId, 16); // Convert Hex to Decimal
-    const title = nft.title || `NFT #${tokenId}`;
+    const rawId = nft.id.tokenId;
+    const decimalId = parseInt(rawId, 16);
+    const title = nft.title || nft.metadata?.name || `NFT #${decimalId}`;
     
-    // Image fallback priority
-    let imageUrl = nft.media?.[0]?.gateway || nft.metadata?.image || '';
-    imageUrl = resolveUrl(imageUrl);
+    // Priority order for High-Res Image
+    let rawImg = nft.media?.[0]?.gateway || nft.metadata?.image || nft.metadata?.image_url || '';
+    let imgUrl = fixImageUrl(rawImg);
 
     card.innerHTML = `
-      <img src="${imageUrl || 'https://via.placeholder.com/200?text=No+Image'}" alt="${title}" onerror="this.src='https://via.placeholder.com/200?text=Image+Error'">
-      <h4>${title}</h4>
-      <p>ID: ${tokenId}</p>
+      <div class="img-wrapper">
+        <img src="${imgUrl || 'https://via.placeholder.com/400x400?text=No+Preview'}" 
+             alt="${title}" 
+             loading="lazy"
+             onerror="this.onerror=null;this.src='https://via.placeholder.com/400x400?text=Image+Load+Failed';">
+      </div>
+      <div class="card-info">
+        <h3>${title}</h3>
+        <span class="token-id">Token ID: #${decimalId}</span>
+      </div>
     `;
 
     grid.appendChild(card);
   }
 
-  // Download Images & Metadata in a ZIP File
-  async function downloadAsZip() {
+  // Zip Download Logic
+  async function downloadZip() {
     const downloadBtn = document.getElementById('downloadBtn');
     const status = document.getElementById('status');
     
     downloadBtn.disabled = true;
-    status.innerText = "ZIP ফাইল তৈরি হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...";
+    status.innerText = "ZIP ফাইল তৈরি হচ্ছে... কিছুটা সময় লাগতে পারে।";
 
     const zip = new JSZip();
-    const imagesFolder = zip.folder("images");
-    const metadataFolder = zip.folder("metadata");
+    const imgFolder = zip.folder("images");
+    const metaFolder = zip.folder("metadata");
 
-    let completed = 0;
+    let count = 0;
 
-    for (let nft of fetchedNFTs) {
-      const tokenId = parseInt(nft.id.tokenId, 16);
+    for (let nft of allNFTs) {
+      const decimalId = parseInt(nft.id.tokenId, 16);
       
       // Save Metadata JSON
-      metadataFolder.file(`${tokenId}.json`, JSON.stringify(nft, null, 2));
+      metaFolder.file(`${decimalId}.json`, JSON.stringify(nft, null, 2));
 
-      // Fetch and Save Image
-      let imageUrl = nft.media?.[0]?.gateway || nft.metadata?.image || '';
-      imageUrl = resolveUrl(imageUrl);
+      // Get Image
+      let rawImg = nft.media?.[0]?.gateway || nft.metadata?.image || '';
+      let imgUrl = fixImageUrl(rawImg);
 
-      if (imageUrl) {
+      if (imgUrl) {
         try {
-          const imageResponse = await fetch(imageUrl);
-          const blob = await imageResponse.blob();
+          const res = await fetch(imgUrl);
+          const blob = await res.blob();
           
-          // Extension detection based on content type
           let ext = 'png';
           if (blob.type.includes('jpeg')) ext = 'jpg';
+          else if (blob.type.includes('webp')) ext = 'webp';
           else if (blob.type.includes('gif')) ext = 'gif';
-          else if (blob.type.includes('svg')) ext = 'svg';
 
-          imagesFolder.file(`${tokenId}.${ext}`, blob);
-        } catch (err) {
-          console.error(`ছবি ডাউনলোড করতে ব্যর্থ Token ID ${tokenId}:`, err);
+          imgFolder.file(`${decimalId}.${ext}`, blob);
+        } catch (e) {
+          console.warn(`ছবি ডাউনলোডে স্কিপ করা হয়েছে Token ID #${decimalId}`, e);
         }
       }
 
-      completed++;
-      status.innerText = `ZIP তৈরি হচ্ছে: ${completed} / ${fetchedNFTs.length}`;
+      count++;
+      if(count % 10 === 0 || count === allNFTs.length) {
+        status.innerText = `প্রসেস করা হচ্ছে: ${count} / ${allNFTs.length}`;
+      }
     }
 
     status.innerText = "ZIP ফাইল কম্প্রেস করা হচ্ছে...";
-    zip.generateAsync({ type: "blob" }).then(function(content) {
-      saveAs(content, `NFT_Collection_${contractAddress}.zip`);
-      status.innerText = "ডাউনলোড সফল হয়েছে!";
+    zip.generateAsync({ type: "blob" }).then(content => {
+      saveAs(content, `NFT_Collection_All_${allNFTs.length}.zip`);
+      status.innerText = `সফলভাবে ${allNFTs.length} টি NFT ডাউনলোড হয়েছে!`;
       downloadBtn.disabled = false;
     });
   }
