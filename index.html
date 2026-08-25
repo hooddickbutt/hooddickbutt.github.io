@@ -3,1357 +3,1239 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PixelFrame 24 - 24x24 Pixel Art & Animated SVG Workstation</title>
+  <title>Pixel SVG Animator</title>
   <style>
-    /* ==========================================================================
-       RESET & THEME SETUP
-       ========================================================================== */
+    :root {
+      --bg-dark: #121318;
+      --bg-card: #1c1e24;
+      --bg-hover: #2a2d37;
+      --border: #2e323e;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-
-    :root {
-      --bg-dark: #0f1115;
-      --bg-panel: #181c24;
-      --bg-card: #212631;
-      --bg-input: #12151b;
-      --border-color: #2e3545;
-      --border-focus: #00e5ff;
-      --accent-color: #00e5ff;
-      --accent-hover: #00b3cc;
-      --accent-active: #ff0055;
-      --text-main: #f0f4f8;
-      --text-muted: #8c9ba8;
-      --danger: #ff3366;
-      --font-pixel: 'Courier New', Courier, monospace;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--font-pixel);
-      height: 100vh;
+      color: var(--text);
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+      touch-action: manipulation;
     }
 
-    /* Crisp edges for true pixel art rendering */
-    img, svg, canvas, div, button {
-      shape-rendering: crispEdges;
-      image-rendering: pixelated;
-      image-rendering: crisp-edges;
-    }
-
-    /* Scrollbars */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-dark); }
-    ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
-
-    /* ==========================================================================
-       HEADER & TOP BAR
-       ========================================================================== */
     header {
-      background: var(--bg-panel);
-      border-bottom: 2px solid var(--border-color);
-      padding: 8px 16px;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-shrink: 0;
-      z-index: 10;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
     }
 
-    .brand {
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
       display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: var(--accent-color);
-      letter-spacing: 1px;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .brand-logo {
-      width: 20px;
-      height: 20px;
-      background: var(--accent-color);
-      box-shadow: 3px 3px 0 var(--accent-active);
+    @media (min-width: 768px) {
+      .container {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        align-items: start;
+      }
+      .editor-column {
+        grid-column: 1;
+      }
+      .sidebar-column {
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
     }
 
-    .stats-bar {
-      display: flex;
-      gap: 16px;
-      font-size: 0.75rem;
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
       color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
     }
 
-    .stats-bar span strong {
-      color: var(--text-main);
+    /* Controls & Buttons */
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
     }
 
-    /* ==========================================================================
-       BUTTONS & INPUT CONTROL
-       ========================================================================== */
-    button, .btn {
-      background: var(--bg-card);
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
-      padding: 6px 12px;
-      font-family: var(--font-pixel);
-      font-size: 0.8rem;
-      font-weight: bold;
+    btn, button, .btn {
+      background-color: var(--bg-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      transition: all 0.1s ease;
-      text-transform: uppercase;
-      border-radius: 2px;
+      transition: background-color 0.15s, border-color 0.15s;
     }
 
     button:hover, .btn:hover {
-      background: var(--border-color);
-      color: var(--accent-color);
-      border-color: var(--accent-color);
+      background-color: #353946;
     }
 
-    button:active, .btn:active, button.active {
-      background: var(--accent-color);
-      color: #000;
-      border-color: var(--accent-color);
+    button.active {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
     }
 
-    button.btn-accent {
-      background: var(--accent-color);
-      color: #000;
-      border-color: var(--accent-color);
-    }
-
-    button.btn-accent:hover {
-      background: var(--accent-hover);
-      color: #000;
-    }
-
-    button.btn-danger {
+    button.danger {
+      background-color: rgba(239, 68, 68, 0.2);
       border-color: var(--danger);
       color: var(--danger);
     }
 
-    button.btn-danger:hover {
-      background: var(--danger);
+    button.danger:hover {
+      background-color: var(--danger);
       color: #fff;
     }
 
-    button.btn-sm { padding: 4px 8px; font-size: 0.7rem; }
-
-    label {
-      display: block;
-      font-size: 0.7rem;
-      color: var(--text-muted);
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-
     input[type="text"], input[type="number"], select {
-      background: var(--bg-input);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 6px 8px;
-      font-family: var(--font-pixel);
-      font-size: 0.8rem;
-      outline: none;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
       width: 100%;
-      border-radius: 2px;
     }
 
-    input[type="text"]:focus, input[type="number"]:focus, select:focus {
-      border-color: var(--accent-color);
-    }
-
-    input[type="range"] {
+    /* Grid Display */
+    .canvas-container {
+      position: relative;
       width: 100%;
-      accent-color: var(--accent-color);
-      background: transparent;
-    }
-
-    /* ==========================================================================
-       MAIN LAYOUT WORKSPACE
-       ========================================================================== */
-    .workspace {
-      display: grid;
-      grid-template-columns: 260px 1fr 340px;
-      flex: 1;
-      overflow: hidden;
-      background: var(--bg-dark);
-    }
-
-    .panel {
-      background: var(--bg-panel);
-      border-right: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-
-    .panel-right {
-      border-right: none;
-      border-left: 1px solid var(--border-color);
-    }
-
-    .panel-section {
-      border-bottom: 1px solid var(--border-color);
-      padding: 12px;
-    }
-
-    .panel-header {
-      font-size: 0.75rem;
-      font-weight: bold;
-      color: var(--accent-color);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    /* ==========================================================================
-       CANVAS & TOOLBAR AREA
-       ========================================================================== */
-    .viewport-container {
-      display: flex;
-      flex-direction: column;
-      background: #090a0d;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .toolbar {
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-color);
-      padding: 8px 12px;
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .canvas-stage {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      overflow: auto;
-      padding: 20px;
-    }
-
-    .canvas-wrapper {
-      position: relative;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-      border: 2px solid var(--border-color);
+      aspect-ratio: 1 / 1;
+      max-width: 450px;
+      margin: 0 auto;
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
       background-image: 
-        linear-gradient(45deg, #181c24 25%, transparent 25%), 
-        linear-gradient(-45deg, #181c24 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #181c24 75%), 
-        linear-gradient(-45deg, transparent 75%, #181c24 75%);
-      background-size: 20px 20px;
-      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-      background-color: #11141a;
-      cursor: crosshair;
+        linear-gradient(45deg, #252830 25%, transparent 25%), 
+        linear-gradient(-45deg, #252830 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #252830 75%), 
+        linear-gradient(-45deg, transparent 75%, #252830 75%);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      touch-action: none;
     }
 
     canvas {
-      display: block;
-    }
-
-    /* Onion Skin overlay canvas */
-    #onion-canvas, #grid-canvas, #diff-canvas {
       position: absolute;
       top: 0;
       left: 0;
-      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
     }
 
-    /* ==========================================================================
-       TIMELINE & FRAMES BAR
-       ========================================================================== */
-    .timeline-container {
-      background: var(--bg-panel);
-      border-top: 1px solid var(--border-color);
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+    #editorCanvas {
+      z-index: 2;
     }
 
-    .timeline-controls {
+    #onionCanvas {
+      z-index: 1;
+      opacity: 0.3;
+    }
+
+    .stats-bar {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-    }
-
-    .timeline-frames {
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 6px;
-    }
-
-    .frame-card {
-      background: var(--bg-card);
-      border: 2px solid var(--border-color);
-      padding: 4px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      cursor: pointer;
-      min-width: 64px;
-      border-radius: 2px;
-      position: relative;
-    }
-
-    .frame-card.active {
-      border-color: var(--accent-color);
-      background: rgba(0, 229, 255, 0.05);
-    }
-
-    .frame-card canvas {
-      width: 48px;
-      height: 48px;
-      background-image: 
-        linear-gradient(45deg, #181c24 25%, transparent 25%), 
-        linear-gradient(-45deg, #181c24 25%, transparent 25%), 
-        linear-gradient(45deg, transparent 75%, #181c24 75%), 
-        linear-gradient(-45deg, transparent 75%, #181c24 75%);
-      background-size: 8px 8px;
-      border: 1px solid var(--border-color);
-    }
-
-    .frame-card .frame-num {
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-    }
-
-    .frame-card .frame-dur {
-      font-size: 0.6rem;
-      color: var(--accent-color);
-    }
-
-    /* ==========================================================================
-       COLOR & PALETTE CONTROLS
-       ========================================================================== */
-    .color-picker-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .color-preview-box {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .color-swatch-large {
-      width: 40px;
-      height: 40px;
-      border: 2px solid var(--border-color);
-      box-shadow: 2px 2px 0 #000;
-    }
-
-    .palette-grid {
-      display: grid;
-      grid-template-columns: repeat(8, 1fr);
-      gap: 4px;
       margin-top: 6px;
     }
 
-    .palette-swatch {
-      width: 100%;
-      aspect-ratio: 1;
-      border: 1px solid var(--border-color);
+    /* Inspector & Tools */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .color-picker-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
       cursor: pointer;
     }
 
-    .palette-swatch:hover {
-      transform: scale(1.1);
-      border-color: #fff;
+    /* Timeline */
+    .timeline {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 0 8px 0;
     }
 
-    /* ==========================================================================
-       LAYERS CONTROL
-       ========================================================================== */
-    .layer-item {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
+    .frame-thumb {
+      flex: 0 0 54px;
+      height: 54px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      background-size: 8px 8px;
+      background-image: 
+        linear-gradient(45deg, #252830 25%, transparent 25%), 
+        linear-gradient(-45deg, #252830 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #252830 75%), 
+        linear-gradient(-45deg, transparent 75%, #252830 75%);
+      position: relative;
+      cursor: pointer;
+    }
+
+    .frame-thumb.active {
+      border-color: var(--accent);
+    }
+
+    .frame-thumb canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .frame-thumb .frame-num {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: rgba(0,0,0,0.7);
+      font-size: 0.6rem;
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    /* Code View */
+    textarea {
+      width: 100%;
+      height: 100px;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.75rem;
+      border-radius: 6px;
       padding: 6px;
+      resize: vertical;
+    }
+
+    .preview-box {
+      width: 100px;
+      height: 100px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      margin: 0 auto;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-size: 0.75rem;
-      cursor: pointer;
+      justify-content: center;
+      background-size: 10px 10px;
+      background-image: 
+        linear-gradient(45deg, #252830 25%, transparent 25%), 
+        linear-gradient(-45deg, #252830 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #252830 75%), 
+        linear-gradient(-45deg, transparent 75%, #252830 75%);
     }
 
-    .layer-item.active {
-      border-color: var(--accent-color);
-      background: rgba(0, 229, 255, 0.05);
-    }
-
-    /* ==========================================================================
-       CODE EDITOR & OUTPUT
-       ========================================================================== */
-    .code-box {
+    .preview-box svg, .preview-box img {
       width: 100%;
-      height: 220px;
-      background: var(--bg-input);
-      color: #00e5ff;
-      border: 1px solid var(--border-color);
-      font-family: monospace;
-      font-size: 0.7rem;
-      padding: 8px;
-      resize: none;
-      outline: none;
-      white-space: pre;
-      user-select: text;
-      -webkit-user-select: text;
-    }
-
-    .guide-box {
-      background: var(--bg-input);
-      border: 1px dashed var(--border-color);
-      padding: 10px;
-      font-size: 0.75rem;
-      line-height: 1.4;
-      color: var(--text-main);
-      max-height: 200px;
-      overflow-y: auto;
+      height: 100%;
+      image-rendering: pixelated;
     }
 
     .toast {
       position: fixed;
       bottom: 20px;
-      right: 20px;
-      background: var(--accent-color);
-      color: #000;
-      padding: 10px 18px;
-      font-weight: bold;
-      font-size: 0.8rem;
-      box-shadow: 4px 4px 0 #000;
-      display: none;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
       z-index: 100;
-      text-transform: uppercase;
     }
 
-    /* ==========================================================================
-       MOBILE RESPONSIVE
-       ========================================================================== */
-    @media (max-width: 900px) {
-      body { height: auto; overflow: auto; }
-      .workspace { grid-template-columns: 1fr; flex: none; }
-      .panel { border: none; border-bottom: 2px solid var(--border-color); }
-      .viewport-container { order: -1; height: auto; min-height: 480px; }
-      .code-box { height: 160px; }
+    .toast.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
 
-  <!-- HEADER BAR -->
   <header>
-    <div class="brand">
-      <div class="brand-logo"></div>
-      PIXELFRAME 24
-    </div>
-    <div class="stats-bar">
-      <span>GRID: <strong>24x24</strong></span>
-      <span>USED: <strong id="stat-used">0</strong></span>
-      <span>CLEAR: <strong id="stat-transparent">576</strong></span>
-      <span>FRAMES: <strong id="stat-frames">1</strong></span>
-    </div>
-    <div>
-      <button class="btn btn-sm btn-accent" onclick="app.exportSVG()">Export SVG</button>
-      <button class="btn btn-sm" onclick="app.copySVG()">Copy</button>
+    <h1>Pixel SVG Animator</h1>
+    <div class="btn-group">
+      <button id="saveProjBtn">Save</button>
+      <button id="loadProjBtn">Load</button>
+      <input type="file" id="projInput" accept=".json" style="display:none">
     </div>
   </header>
 
-  <!-- WORKSPACE -->
-  <div class="workspace">
-
-    <!-- LEFT PANEL: TOOLS, COLOR & LAYERS -->
-    <div class="panel">
-      <!-- DRAWING TOOLS -->
-      <div class="panel-section">
-        <div class="panel-header">Painting Tools</div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
-          <button class="btn btn-sm active" id="tool-pencil" onclick="app.setTool('pencil')" title="Pencil (P)">Pencil</button>
-          <button class="btn btn-sm" id="tool-eraser" onclick="app.setTool('eraser')" title="Eraser (E)">Eraser</button>
-          <button class="btn btn-sm" id="tool-fill" onclick="app.setTool('fill')" title="Fill (G)">Fill</button>
-          <button class="btn btn-sm" id="tool-line" onclick="app.setTool('line')">Line</button>
-          <button class="btn btn-sm" id="tool-rect" onclick="app.setTool('rect')">Rect</button>
-          <button class="btn btn-sm" id="tool-eyedropper" onclick="app.setTool('eyedropper')" title="Picker (I)">Picker</button>
+  <div class="container">
+    <div class="editor-column">
+      <div class="card">
+        <div class="canvas-container">
+          <canvas id="onionCanvas"></canvas>
+          <canvas id="editorCanvas"></canvas>
         </div>
-        <div style="display: flex; gap: 4px; margin-top: 6px;">
-          <button class="btn btn-sm" onclick="app.undo()" title="Undo (Z)">Undo</button>
-          <button class="btn btn-sm" onclick="app.redo()" title="Redo (Y)">Redo</button>
-          <button class="btn btn-sm btn-danger" onclick="app.clearCurrentFrame()">Clear</button>
+        <div class="stats-bar">
+          <span id="coordDisplay">X: -- Y: --</span>
+          <span id="pixelStats">PIXELS: 0 / 576</span>
         </div>
       </div>
 
-      <!-- GLASS & COLOR CONTROLS -->
-      <div class="panel-section">
-        <div class="panel-header">Glass / Color Panel</div>
-        <div class="color-picker-group">
-          <div class="color-preview-box">
-            <div id="color-swatch" class="color-swatch-large" style="background:#00e5ff"></div>
-            <div style="flex:1;">
-              <input type="color" id="picker-color" value="#00e5ff" onchange="app.setColor(this.value)">
-            </div>
-          </div>
-
-          <div>
-            <label>Pixel Opacity / Translucency (<span id="opacity-val">100</span>%)</label>
-            <input type="range" id="picker-opacity" min="0.1" max="1.0" step="0.05" value="1.0" oninput="app.setOpacity(this.value)">
-          </div>
-
-          <div>
-            <label>Recently Used Colors</label>
-            <div id="history-grid" class="palette-grid"></div>
-          </div>
-
-          <div>
-            <label>Palette Presets</label>
-            <div id="preset-grid" class="palette-grid"></div>
-          </div>
+      <div class="card" style="margin-top: 12px;">
+        <div class="card-title">Timeline</div>
+        <div class="timeline" id="timeline"></div>
+        <div class="btn-group" style="margin-top: 8px;">
+          <button id="addFrameBtn">+ Blank</button>
+          <button id="dupFrameBtn">+ Duplicate</button>
+          <button id="delFrameBtn" class="danger">Delete</button>
+          <button id="onionBtn">Onion: OFF</button>
         </div>
-      </div>
-
-      <!-- LAYERS -->
-      <div class="panel-section" style="flex:1;">
-        <div class="panel-header">
-          Artwork Layers
-          <button class="btn btn-sm" onclick="app.addLayer()">+ Add</button>
-        </div>
-        <div id="layers-list"></div>
-      </div>
-    </div>
-
-    <!-- CENTER PANEL: CANVAS & TIMELINE -->
-    <div class="viewport-container">
-      <!-- TOP CANVAS TOOLBAR -->
-      <div class="toolbar">
-        <button class="btn btn-sm" id="btn-grid" onclick="app.toggleGrid()">Grid: ON</button>
-        <button class="btn btn-sm" id="btn-onion" onclick="app.toggleOnion()">Onion: OFF</button>
-        <button class="btn btn-sm" id="btn-diff" onclick="app.toggleDiff()">Diff: OFF</button>
-        <div style="border-left:1px solid var(--border-color); height:20px; margin:0 4px;"></div>
-        <button class="btn btn-sm" onclick="app.shiftPixels(-1,0)">←</button>
-        <button class="btn btn-sm" onclick="app.shiftPixels(1,0)">→</button>
-        <button class="btn btn-sm" onclick="app.shiftPixels(0,-1)">↑</button>
-        <button class="btn btn-sm" onclick="app.shiftPixels(0,1)">↓</button>
-        <button class="btn btn-sm" onclick="app.mirrorHorizontal()" title="Mirror Horizontal">⇄</button>
-      </div>
-
-      <!-- EDITOR CANVAS STAGE -->
-      <div class="canvas-stage">
-        <div class="canvas-wrapper" id="canvas-wrapper">
-          <canvas id="onion-canvas" width="480" height="480"></canvas>
-          <canvas id="diff-canvas" width="480" height="480"></canvas>
-          <canvas id="main-canvas" width="480" height="480"></canvas>
-          <canvas id="grid-canvas" width="480" height="480"></canvas>
-        </div>
-      </div>
-
-      <!-- TIMELINE & FRAME CONTROL -->
-      <div class="timeline-container">
-        <div class="timeline-controls">
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="btn btn-sm btn-accent" id="btn-play" onclick="app.togglePlay()">Play</button>
-            <label style="margin:0;">FPS:</label>
-            <select id="fps-select" style="width:70px;" onchange="app.setFPS(this.value)">
-              <option value="6">6 FPS</option>
-              <option value="10" selected>10 FPS</option>
-              <option value="12">12 FPS</option>
-              <option value="24">24 FPS</option>
-            </select>
-          </div>
-          <div>
-            <button class="btn btn-sm" onclick="app.addFrame()">+ Frame</button>
-            <button class="btn btn-sm" onclick="app.duplicateFrame()">Duplicate</button>
-            <button class="btn btn-sm btn-danger" onclick="app.deleteFrame()">Delete</button>
-          </div>
-        </div>
-        <!-- FRAME THUMBNAILS HORIZONTAL SCROLL -->
-        <div class="timeline-frames" id="frames-bar"></div>
-      </div>
-    </div>
-
-    <!-- RIGHT PANEL: ANIMATION GUIDE & SVG CODE OUTPUT -->
-    <div class="panel panel-right">
-      <!-- ANIMATION ASSISTANT GUIDE -->
-      <div class="panel-section">
-        <div class="panel-header">Animation Guide (Manual)</div>
-        <select id="guide-type" onchange="app.loadGuide(this.value)" style="margin-bottom:8px;">
-          <option value="idle">Guide: Idle Animation</option>
-          <option value="blink">Guide: Eye Blink</option>
-          <option value="bounce">Guide: Pixel Bounce</option>
-          <option value="shake">Guide: Pixel Shake</option>
-          <option value="glow">Guide: Glass / Opacity Glow</option>
-          <option value="explosion">Guide: Particle Explosion</option>
-        </select>
-        <div class="guide-box" id="guide-content">
-          Select a guide to read manual frame-by-frame animation instructions.
-        </div>
-      </div>
-
-      <!-- SVG CODE & EXPORT PANEL -->
-      <div class="panel-section" style="flex:1; display:flex; flex-direction:column;">
-        <div class="panel-header">Exported SVG Code</div>
-        <textarea id="svg-output" class="code-box" readonly></textarea>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
-          <button class="btn btn-sm btn-accent" onclick="app.copySVG()">Copy SVG</button>
-          <button class="btn btn-sm" onclick="app.downloadSVG()">Download SVG</button>
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
-          <button class="btn btn-sm" onclick="app.exportJSON()">Save JSON Project</button>
-          <button class="btn btn-sm" onclick="document.getElementById('import-file').click()">Load Project</button>
-          <input type="file" id="import-file" style="display:none;" onchange="app.importJSON(event)">
+        <div class="btn-group" style="margin-top: 8px; align-items: center;">
+          <button id="playBtn">Play</button>
+          <label style="font-size: 0.8rem; margin-left: 8px;">FPS:</label>
+          <select id="fpsSelect" style="width: auto;">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10" selected>10</option>
+            <option value="12">12</option>
+            <option value="15">15</option>
+            <option value="24">24</option>
+          </select>
         </div>
       </div>
     </div>
 
+    <div class="sidebar-column">
+      <div class="card">
+        <div class="card-title">Setup & Import</div>
+        <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+          <select id="gridSizeSelect">
+            <option value="8">8 x 8</option>
+            <option value="16">16 x 16</option>
+            <option value="24" selected>24 x 24</option>
+            <option value="32">32 x 32</option>
+          </select>
+          <button id="fileTriggerBtn">Upload File</button>
+          <input type="file" id="fileInput" accept="image/png, image/svg+xml" style="display:none">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tools</div>
+        <div class="tool-grid">
+          <button id="pencilBtn" class="active">Pencil</button>
+          <button id="eraserBtn">Eraser</button>
+          <button id="pickerBtn">Picker</button>
+        </div>
+        <div class="btn-group" style="margin-bottom: 12px;">
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+
+        <div class="card-title">Color Inspector</div>
+        <div class="color-picker-row">
+          <input type="color" id="nativeColor" value="#ff0055">
+          <input type="text" id="hexInput" value="#FF0055" maxlength="7">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 0.75rem; color: var(--text-muted);">Opacity: <span id="opacityVal">100%</span></label>
+          <input type="range" id="opacitySlider" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+        <div class="palette" id="recentPalette"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Color Reduction</div>
+        <div style="display: flex; gap: 6px;">
+          <select id="colorReduceCount">
+            <option value="2">2 Colors</option>
+            <option value="4">4 Colors</option>
+            <option value="8" selected>8 Colors</option>
+            <option value="16">16 Colors</option>
+          </select>
+          <button id="reduceColorsBtn">Apply</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">SVG Output</div>
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+          <div class="preview-box" id="svgPreviewContainer"></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <button id="generateSvgBtn">Generate SVG</button>
+            <button id="copySvgBtn">Copy Code</button>
+            <button id="downloadSvgBtn">Download</button>
+          </div>
+        </div>
+        <textarea id="svgOutput" readonly placeholder="Click 'Generate SVG' to produce animated standalone code..."></textarea>
+      </div>
+    </div>
   </div>
 
-  <!-- TOAST NOTIFICATION -->
-  <div id="toast" class="toast">SVG COPIED TO CLIPBOARD</div>
+  <div class="toast" id="toast">Message</div>
 
-  <!-- ==========================================================================
-       PIXELFRAME 24 APPLICATION ENGINE
-       ========================================================================== */
   <script>
-    const GRID_SIZE = 24;
-    const CANVAS_PX = 480;
-    const CELL_PX = CANVAS_PX / GRID_SIZE;
-
-    // Built-in color palettes
-    const PRESET_COLORS = [
-      '#00e5ff', '#ff0055', '#ffe600', '#00ff66', '#9d00ff', '#ffffff', '#000000', '#7a8599',
-      '#ff3366', '#ff9900', '#33ccff', '#ffcc00', '#99cc00', '#cc00ff', '#0033cc', '#ff6699'
-    ];
-
-    // Manual Animation Instructions Library
-    const GUIDES = {
-      idle: `RECOMMENDED FRAMES: 4\n\n• Frame 1: Draw your core 24x24 character/object.\n• Frame 2: Move upper body/chest pixels UP by 1px.\n• Frame 3: Keep upper pixels 1px UP, adjust secondary pixels.\n• Frame 4: Return pixels to original position.`,
-      blink: `RECOMMENDED FRAMES: 5\n\n• Frame 1: Eyes completely open.\n• Frame 2: Move eyelid pixels DOWN 1px.\n• Frame 3: Draw eyes fully closed (1 row of pixels).\n• Frame 4: Eyelid pixels moving back UP 1px.\n• Frame 5: Eyes open again.`,
-      bounce: `RECOMMENDED FRAMES: 5\n\n• Frame 1: Base position.\n• Frame 2: Shift ALL artwork pixels UP by 1px.\n• Frame 3: Shift ALL artwork pixels UP by 2px.\n• Frame 4: Shift artwork back to 1px UP.\n• Frame 5: Return to base position.`,
-      shake: `RECOMMENDED FRAMES: 4\n\n• Frame 1: Base position.\n• Frame 2: Shift artwork LEFT by 1px.\n• Frame 3: Shift artwork RIGHT by 1px.\n• Frame 4: Return to center.`,
-      glow: `RECOMMENDED FRAMES: 4\n\n• Frame 1: Set glowing pixels to 30% Opacity.\n• Frame 2: Set glowing pixels to 60% Opacity.\n• Frame 3: Set glowing pixels to 100% Opacity.\n• Frame 4: Reduce glowing pixels back to 60% Opacity.`,
-      explosion: `RECOMMENDED FRAMES: 6\n\n• Frame 1: Single center pixel cluster.\n• Frame 2: Move outer pixels outward by 1px.\n• Frame 3: Move particles 2px outward and reduce opacity to 70%.\n• Frame 4: Particles 4px outward, opacity 40%.\n• Frame 5: Particles 6px outward, opacity 10%.\n• Frame 6: Clear frame (transparent).`
+    // --- APP STATE ---
+    const state = {
+      width: 24,
+      height: 24,
+      fps: 10,
+      activeFrameIndex: 0,
+      frames: [], // Array of 2D arrays: null or { color: '#HEX', opacity: 0..1 }
+      activeTool: 'pencil', // pencil, eraser, picker
+      currentColor: '#FF0055',
+      currentOpacity: 1.0,
+      onionSkin: false,
+      isPlaying: false,
+      playInterval: null,
+      history: [],
+      historyIndex: -1,
+      maxHistory: 50,
+      recentColors: ['#FF0055', '#00FFcc', '#FFcc00', '#000000', '#FFFFFF']
     };
 
-    class PixelFrameApp {
-      constructor() {
-        this.activeTool = 'pencil';
-        this.activeColor = '#00e5ff';
-        this.activeOpacity = 1.0;
-        this.colorHistory = ['#00e5ff', '#ff0055', '#ffe600', '#00ff66'];
+    // --- DOM ELEMENTS ---
+    const editorCanvas = document.getElementById('editorCanvas');
+    const editorCtx = editorCanvas.getContext('2d');
+    const onionCanvas = document.getElementById('onionCanvas');
+    const onionCtx = onionCanvas.getContext('2d');
+    
+    const pencilBtn = document.getElementById('pencilBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const pickerBtn = document.getElementById('pickerBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    
+    const nativeColor = document.getElementById('nativeColor');
+    const hexInput = document.getElementById('hexInput');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityVal = document.getElementById('opacityVal');
+    const recentPalette = document.getElementById('recentPalette');
+    
+    const timeline = document.getElementById('timeline');
+    const addFrameBtn = document.getElementById('addFrameBtn');
+    const dupFrameBtn = document.getElementById('dupFrameBtn');
+    const delFrameBtn = document.getElementById('delFrameBtn');
+    const onionBtn = document.getElementById('onionBtn');
+    const playBtn = document.getElementById('playBtn');
+    const fpsSelect = document.getElementById('fpsSelect');
+    
+    const gridSizeSelect = document.getElementById('gridSizeSelect');
+    const fileTriggerBtn = document.getElementById('fileTriggerBtn');
+    const fileInput = document.getElementById('fileInput');
+    const coordDisplay = document.getElementById('coordDisplay');
+    const pixelStats = document.getElementById('pixelStats');
+    
+    const generateSvgBtn = document.getElementById('generateSvgBtn');
+    const copySvgBtn = document.getElementById('copySvgBtn');
+    const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+    const svgOutput = document.getElementById('svgOutput');
+    const svgPreviewContainer = document.getElementById('svgPreviewContainer');
+    
+    const colorReduceCount = document.getElementById('colorReduceCount');
+    const reduceColorsBtn = document.getElementById('reduceColorsBtn');
+    
+    const saveProjBtn = document.getElementById('saveProjBtn');
+    const loadProjBtn = document.getElementById('loadProjBtn');
+    const projInput = document.getElementById('projInput');
+    const toast = document.getElementById('toast');
 
-        // Animation State
-        this.fps = 10;
-        this.isPlaying = false;
-        this.animTimer = null;
-        this.currentFrameIdx = 0;
-        this.activeLayerIdx = 0;
+    // --- INITIALIZATION ---
+    function init() {
+      resetGrid(24, 24);
+      setupEventListeners();
+      renderPalette();
+      updateUI();
+    }
 
-        // View options
-        this.showGrid = true;
-        this.showOnion = false;
-        this.showDiff = false;
-
-        // Project Data Structure: Frames -> Layers -> Grid[24][24]
-        this.frames = [];
-        this.history = []; // Undo stack
-        this.redoStack = [];
-
-        this.initDOM();
-        this.createNewProject();
-        this.setupEvents();
-      }
-
-      initDOM() {
-        this.mainCanvas = document.getElementById('main-canvas');
-        this.ctx = this.mainCanvas.getContext('2d');
-        this.onionCanvas = document.getElementById('onion-canvas');
-        this.onionCtx = this.onionCanvas.getContext('2d');
-        this.gridCanvas = document.getElementById('grid-canvas');
-        this.gridCtx = this.gridCanvas.getContext('2d');
-        this.diffCanvas = document.getElementById('diff-canvas');
-        this.diffCtx = this.diffCanvas.getContext('2d');
-
-        this.renderPresetPalettes();
-        this.renderHistoryPalettes();
-        this.loadGuide('idle');
-      }
-
-      createNewProject() {
-        this.frames = [this.createBlankFrame()];
-        this.currentFrameIdx = 0;
-        this.activeLayerIdx = 0;
-        this.drawGrid();
-        this.update();
-      }
-
-      createBlankGrid() {
-        const grid = [];
-        for (let r = 0; r < GRID_SIZE; r++) {
-          const row = [];
-          for (let c = 0; c < GRID_SIZE; c++) {
-            row.push(null); // null = transparent
-          }
-          grid.push(row);
+    function createEmptyPixels(w, h) {
+      const pixels = [];
+      for (let y = 0; y < h; y++) {
+        const row = [];
+        for (let x = 0; x < w; x++) {
+          row.push(null);
         }
-        return grid;
+        pixels.push(row);
+      }
+      return pixels;
+    }
+
+    function deepCopyPixels(pixels) {
+      return pixels.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
+
+    function resetGrid(w, h) {
+      state.width = w;
+      state.height = h;
+      state.frames = [createEmptyPixels(w, h)];
+      state.activeFrameIndex = 0;
+      state.history = [];
+      state.historyIndex = -1;
+      saveHistory();
+      renderAll();
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    // --- HISTORY (UNDO / REDO) ---
+    function saveHistory() {
+      if (state.historyIndex < state.history.length - 1) {
+        state.history = state.history.slice(0, state.historyIndex + 1);
+      }
+      const snapshot = deepCopyPixels(state.frames[state.activeFrameIndex]);
+      state.history.push(snapshot);
+      if (state.history.length > state.maxHistory) {
+        state.history.shift();
+      } else {
+        state.historyIndex++;
+      }
+    }
+
+    function undo() {
+      if (state.historyIndex > 0) {
+        state.historyIndex--;
+        state.frames[state.activeFrameIndex] = deepCopyPixels(state.history[state.historyIndex]);
+        renderAll();
+      }
+    }
+
+    function redo() {
+      if (state.historyIndex < state.history.length - 1) {
+        state.historyIndex++;
+        state.frames[state.activeFrameIndex] = deepCopyPixels(state.history[state.historyIndex]);
+        renderAll();
+      }
+    }
+
+    // --- RENDERING ---
+    function renderAll() {
+      renderEditorCanvas();
+      renderOnionCanvas();
+      renderTimeline();
+      updateStats();
+    }
+
+    function renderEditorCanvas() {
+      editorCanvas.width = state.width;
+      editorCanvas.height = state.height;
+      editorCtx.clearRect(0, 0, state.width, state.height);
+
+      const pixels = state.frames[state.activeFrameIndex];
+      if (!pixels) return;
+
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = pixels[y][x];
+          if (cell && cell.opacity > 0) {
+            editorCtx.fillStyle = cell.color;
+            editorCtx.globalAlpha = cell.opacity;
+            editorCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      editorCtx.globalAlpha = 1.0;
+    }
+
+    function renderOnionCanvas() {
+      onionCanvas.width = state.width;
+      onionCanvas.height = state.height;
+      onionCtx.clearRect(0, 0, state.width, state.height);
+
+      if (!state.onionSkin || state.activeFrameIndex === 0) return;
+
+      const prevPixels = state.frames[state.activeFrameIndex - 1];
+      if (!prevPixels) return;
+
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = prevPixels[y][x];
+          if (cell && cell.opacity > 0) {
+            onionCtx.fillStyle = cell.color;
+            onionCtx.globalAlpha = cell.opacity * 0.4;
+            onionCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      onionCtx.globalAlpha = 1.0;
+    }
+
+    function renderTimeline() {
+      timeline.innerHTML = '';
+      state.frames.forEach((frame, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = `frame-thumb ${idx === state.activeFrameIndex ? 'active' : ''}`;
+        
+        const cvs = document.createElement('canvas');
+        cvs.width = state.width;
+        cvs.height = state.height;
+        const ctx = cvs.getContext('2d');
+        
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            const cell = frame[y][x];
+            if (cell && cell.opacity > 0) {
+              ctx.fillStyle = cell.color;
+              ctx.globalAlpha = cell.opacity;
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+
+        const num = document.createElement('span');
+        num.className = 'frame-num';
+        num.textContent = idx + 1;
+
+        thumb.appendChild(cvs);
+        thumb.appendChild(num);
+
+        thumb.addEventListener('click', () => {
+          state.activeFrameIndex = idx;
+          state.history = [];
+          state.historyIndex = -1;
+          saveHistory();
+          renderAll();
+        });
+
+        timeline.appendChild(thumb);
+      });
+    }
+
+    function updateStats() {
+      const pixels = state.frames[state.activeFrameIndex];
+      let used = 0;
+      const total = state.width * state.height;
+
+      if (pixels) {
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            if (pixels[y][x] && pixels[y][x].opacity > 0) used++;
+          }
+        }
       }
 
-      createBlankFrame() {
-        return {
-          duration: 100, // ms
-          layers: [
-            { name: 'Layer 1', visible: true, locked: false, opacity: 1.0, data: this.createBlankGrid() }
-          ]
+      pixelStats.textContent = `PIXELS: ${used} / ${total}`;
+    }
+
+    // --- INTERACTION / DRAWING ---
+    let isDrawing = false;
+
+    function getCanvasCoords(e) {
+      const rect = editorCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const x = Math.floor(((clientX - rect.left) / rect.width) * state.width);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * state.height);
+      
+      return {
+        x: Math.max(0, Math.min(state.width - 1, x)),
+        y: Math.max(0, Math.min(state.height - 1, y))
+      };
+    }
+
+    function applyTool(x, y) {
+      const currentFrame = state.frames[state.activeFrameIndex];
+      
+      if (state.activeTool === 'pencil') {
+        currentFrame[y][x] = {
+          color: state.currentColor,
+          opacity: state.currentOpacity
         };
-      }
-
-      // ==========================================================================
-      // DRAWING & TOOL LOGIC
-      // ==========================================================================
-      getCurrentGrid() {
-        return this.frames[this.currentFrameIdx].layers[this.activeLayerIdx].data;
-      }
-
-      saveUndoState() {
-        this.history.push(JSON.stringify(this.frames));
-        if (this.history.length > 30) this.history.shift();
-        this.redoStack = [];
-      }
-
-      undo() {
-        if (this.history.length === 0) return;
-        this.redoStack.push(JSON.stringify(this.frames));
-        this.frames = JSON.parse(this.history.pop());
-        this.update();
-      }
-
-      redo() {
-        if (this.redoStack.length === 0) return;
-        this.history.push(JSON.stringify(this.frames));
-        this.frames = JSON.parse(this.redoStack.pop());
-        this.update();
-      }
-
-      paintPixel(x, y) {
-        if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
-        const layer = this.frames[this.currentFrameIdx].layers[this.activeLayerIdx];
-        if (!layer.visible || layer.locked) return;
-
-        const grid = layer.data;
-
-        if (this.activeTool === 'pencil') {
-          grid[y][x] = { color: this.activeColor, opacity: this.activeOpacity };
-        } else if (this.activeTool === 'eraser') {
-          grid[y][x] = null;
-        } else if (this.activeTool === 'eyedropper') {
-          if (grid[y][x]) {
-            this.setColor(grid[y][x].color);
-            this.setOpacity(grid[y][x].opacity);
-            this.setTool('pencil');
-          }
-        } else if (this.activeTool === 'fill') {
-          this.floodFill(x, y, grid[y][x], { color: this.activeColor, opacity: this.activeOpacity });
+        addRecentColor(state.currentColor);
+      } else if (state.activeTool === 'eraser') {
+        currentFrame[y][x] = null;
+      } else if (state.activeTool === 'picker') {
+        const cell = currentFrame[y][x];
+        if (cell) {
+          state.currentColor = cell.color;
+          state.currentOpacity = cell.opacity;
+          updateUI();
         }
+        return;
       }
+      renderEditorCanvas();
+      renderTimeline();
+      updateStats();
+    }
 
-      floodFill(startX, startY, targetVal, fillVal) {
-        const grid = this.getCurrentGrid();
-        const targetHex = targetVal ? `${targetVal.color}_${targetVal.opacity}` : null;
-        const fillHex = fillVal ? `${fillVal.color}_${fillVal.opacity}` : null;
+    function handlePointerDown(e) {
+      isDrawing = true;
+      const { x, y } = getCanvasCoords(e);
+      coordDisplay.textContent = `X: ${x} Y: ${y}`;
+      applyTool(x, y);
+    }
 
-        if (targetHex === fillHex) return;
-
-        const queue = [[startX, startY]];
-        while (queue.length > 0) {
-          const [x, y] = queue.pop();
-          if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) continue;
-
-          const curr = grid[y][x];
-          const currHex = curr ? `${curr.color}_${curr.opacity}` : null;
-
-          if (currHex === targetHex) {
-            grid[y][x] = fillVal;
-            queue.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
-          }
-        }
+    function handlePointerMove(e) {
+      const { x, y } = getCanvasCoords(e);
+      coordDisplay.textContent = `X: ${x} Y: ${y}`;
+      if (isDrawing && state.activeTool !== 'picker') {
+        applyTool(x, y);
       }
+    }
 
-      drawLine(x0, y0, x1, y1) {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-        let err = dx - dy;
-
-        while (true) {
-          this.paintPixel(x0, y0);
-          if (x0 === x1 && y0 === y1) break;
-          const e2 = 2 * err;
-          if (e2 > -dy) { err -= dy; x0 += sx; }
-          if (e2 < dx) { err += dx; y0 += sy; }
-        }
+    function handlePointerUp() {
+      if (isDrawing) {
+        isDrawing = false;
+        saveHistory();
       }
+    }
 
-      drawRect(x0, y0, x1, y1) {
-        const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
-        const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
-        for (let r = minY; r <= maxY; r++) {
-          for (let c = minX; c <= maxX; c++) {
-            this.paintPixel(c, r);
-          }
-        }
+    // --- PALETTE MANAGEMENT ---
+    function addRecentColor(hex) {
+      if (!state.recentColors.includes(hex)) {
+        state.recentColors.unshift(hex);
+        if (state.recentColors.length > 10) state.recentColors.pop();
+        renderPalette();
       }
+    }
 
-      // Pixel Shifting Helpers
-      shiftPixels(dx, dy) {
-        this.saveUndoState();
-        const grid = this.getCurrentGrid();
-        const newGrid = this.createBlankGrid();
-
-        for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
-            const nr = r + dy;
-            const nc = c + dx;
-            if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-              newGrid[nr][nc] = grid[r][c];
-            }
-          }
-        }
-        this.frames[this.currentFrameIdx].layers[this.activeLayerIdx].data = newGrid;
-        this.update();
-      }
-
-      mirrorHorizontal() {
-        this.saveUndoState();
-        const grid = this.getCurrentGrid();
-        for (let r = 0; r < GRID_SIZE; r++) {
-          grid[r].reverse();
-        }
-        this.update();
-      }
-
-      clearCurrentFrame() {
-        this.saveUndoState();
-        this.frames[this.currentFrameIdx].layers[this.activeLayerIdx].data = this.createBlankGrid();
-        this.update();
-      }
-
-      // ==========================================================================
-      // RENDERING & PREVIEW ENGINE
-      // ==========================================================================
-      drawGrid() {
-        this.gridCtx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
-        if (!this.showGrid) return;
-
-        this.gridCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-        this.gridCtx.lineWidth = 1;
-
-        for (let i = 0; i <= GRID_SIZE; i++) {
-          const p = i * CELL_PX;
-          this.gridCtx.beginPath();
-          this.gridCtx.moveTo(p, 0); this.gridCtx.lineTo(p, CANVAS_PX);
-          this.gridCtx.stroke();
-
-          this.gridCtx.beginPath();
-          this.gridCtx.moveTo(0, p); this.gridCtx.lineTo(CANVAS_PX, p);
-          this.gridCtx.stroke();
-        }
-      }
-
-      renderMainCanvas() {
-        this.ctx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
-        const currentFrame = this.frames[this.currentFrameIdx];
-
-        currentFrame.layers.forEach(layer => {
-          if (!layer.visible) return;
-          for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-              const cell = layer.data[r][c];
-              if (cell) {
-                this.ctx.fillStyle = cell.color;
-                this.ctx.globalAlpha = cell.opacity * layer.opacity;
-                this.ctx.fillRect(c * CELL_PX, r * CELL_PX, CELL_PX, CELL_PX);
-              }
-            }
-          }
+    function renderPalette() {
+      recentPalette.innerHTML = '';
+      state.recentColors.forEach(color => {
+        const swatch = document.createElement('div');
+        swatch.className = 'swatch';
+        swatch.style.backgroundColor = color;
+        swatch.addEventListener('click', () => {
+          state.currentColor = color;
+          updateUI();
         });
-        this.ctx.globalAlpha = 1.0;
-      }
+        recentPalette.appendChild(swatch);
+      });
+    }
 
-      renderOnionSkin() {
-        this.onionCtx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
-        if (!this.showOnion || this.currentFrameIdx === 0) return;
+    function updateUI() {
+      nativeColor.value = state.currentColor;
+      hexInput.value = state.currentColor.toUpperCase();
+      opacitySlider.value = Math.round(state.currentOpacity * 100);
+      opacityVal.textContent = `${opacitySlider.value}%`;
 
-        const prevFrame = this.frames[this.currentFrameIdx - 1];
-        this.onionCtx.globalAlpha = 0.25; // low opacity for onion view
+      [pencilBtn, eraserBtn, pickerBtn].forEach(b => b.classList.remove('active'));
+      if (state.activeTool === 'pencil') pencilBtn.classList.add('active');
+      if (state.activeTool === 'eraser') eraserBtn.classList.add('active');
+      if (state.activeTool === 'picker') pickerBtn.classList.add('active');
+    }
 
-        prevFrame.layers.forEach(layer => {
-          if (!layer.visible) return;
-          for (let r = 0; r < GRID_SIZE; r++) {
-            for (let c = 0; c < GRID_SIZE; c++) {
-              const cell = layer.data[r][c];
-              if (cell) {
-                this.onionCtx.fillStyle = cell.color;
-                this.onionCtx.fillRect(c * CELL_PX, r * CELL_PX, CELL_PX, CELL_PX);
-              }
+    // --- IMAGE & SVG IMPORT ---
+    function handleFileUpload(file) {
+      if (!file) return;
+
+      if (file.type.includes('png') || file.type.includes('image/')) {
+        const img = new Image();
+        img.onload = () => processImportedImage(img);
+        img.src = URL.createObjectURL(file);
+      } else if (file.type.includes('svg')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target.result;
+          if (content.includes('<rect') && content.includes('crispEdges')) {
+            // Attempt native SVG parse if created by this app
+            if (parseNativeSvg(content)) {
+              showToast('Imported Animated SVG');
+              return;
             }
           }
-        });
-        this.onionCtx.globalAlpha = 1.0;
+          // Fallback rasterize SVG
+          const img = new Image();
+          img.onload = () => processImportedImage(img);
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(content);
+        };
+        reader.readAsText(file);
       }
+    }
 
-      renderFrameDiff() {
-        this.diffCtx.clearRect(0, 0, CANVAS_PX, CANVAS_PX);
-        if (!this.showDiff || this.currentFrameIdx === 0) return;
+    function processImportedImage(img) {
+      const cvs = document.createElement('canvas');
+      cvs.width = state.width;
+      cvs.height = state.height;
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(img, 0, 0, state.width, state.height);
+      
+      const imgData = ctx.getImageData(0, 0, state.width, state.height).data;
+      const newFrame = createEmptyPixels(state.width, state.height);
 
-        const currGrid = this.getCurrentGrid();
-        const prevGrid = this.frames[this.currentFrameIdx - 1].layers[this.activeLayerIdx].data;
-
-        for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
-            const curr = currGrid[r][c];
-            const prev = prevGrid[r][c];
-
-            if (!prev && curr) {
-              // New pixel -> Green
-              this.diffCtx.fillStyle = 'rgba(0, 255, 100, 0.4)';
-              this.diffCtx.fillRect(c * CELL_PX, r * CELL_PX, CELL_PX, CELL_PX);
-            } else if (prev && !curr) {
-              // Removed pixel -> Red
-              this.diffCtx.fillStyle = 'rgba(255, 0, 80, 0.4)';
-              this.diffCtx.fillRect(c * CELL_PX, r * CELL_PX, CELL_PX, CELL_PX);
-            }
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const idx = (y * state.width + x) * 4;
+          const a = imgData[idx + 3] / 255;
+          if (a > 0.05) {
+            const r = imgData[idx].toString(16).padStart(2, '0');
+            const g = imgData[idx + 1].toString(16).padStart(2, '0');
+            const b = imgData[idx + 2].toString(16).padStart(2, '0');
+            newFrame[y][x] = {
+              color: `#${r}${g}${b}`.toUpperCase(),
+              opacity: parseFloat(a.toFixed(2))
+            };
           }
         }
       }
 
-      updateStats() {
-        let used = 0;
-        const grid = this.getCurrentGrid();
-        for (let r = 0; r < GRID_SIZE; r++) {
-          for (let c = 0; c < GRID_SIZE; c++) {
-            if (grid[r][c]) used++;
-          }
-        }
-        document.getElementById('stat-used').innerText = used;
-        document.getElementById('stat-transparent').innerText = 576 - used;
-        document.getElementById('stat-frames').innerText = this.frames.length;
-      }
+      state.frames[state.activeFrameIndex] = newFrame;
+      saveHistory();
+      renderAll();
+      showToast('Image Imported');
+    }
 
-      update() {
-        this.renderMainCanvas();
-        this.renderOnionSkin();
-        this.renderFrameDiff();
-        this.renderTimeline();
-        this.renderLayersUI();
-        this.updateStats();
-        this.generateSVGOutput();
-      }
+    function parseNativeSvg(svgString) {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgString, 'image/svg+xml');
+        const groups = doc.querySelectorAll('g.frame');
+        
+        if (groups.length === 0) return false;
 
-      // ==========================================================================
-      // FRAME & TIMELINE MANAGER
-      // ==========================================================================
-      addFrame() {
-        this.saveUndoState();
-        this.frames.push(this.createBlankFrame());
-        this.currentFrameIdx = this.frames.length - 1;
-        this.update();
-      }
-
-      duplicateFrame() {
-        this.saveUndoState();
-        const copy = JSON.parse(JSON.stringify(this.frames[this.currentFrameIdx]));
-        this.frames.splice(this.currentFrameIdx + 1, 0, copy);
-        this.currentFrameIdx++;
-        this.update();
-      }
-
-      deleteFrame() {
-        if (this.frames.length <= 1) return;
-        this.saveUndoState();
-        this.frames.splice(this.currentFrameIdx, 1);
-        if (this.currentFrameIdx >= this.frames.length) {
-          this.currentFrameIdx = this.frames.length - 1;
-        }
-        this.update();
-      }
-
-      selectFrame(idx) {
-        this.currentFrameIdx = idx;
-        this.update();
-      }
-
-      renderTimeline() {
-        const bar = document.getElementById('frames-bar');
-        bar.innerHTML = '';
-
-        this.frames.forEach((frame, idx) => {
-          const card = document.createElement('div');
-          card.className = `frame-card ${idx === this.currentFrameIdx ? 'active' : ''}`;
-          card.onclick = () => this.selectFrame(idx);
-
-          const canvas = document.createElement('canvas');
-          canvas.width = 48; canvas.height = 48;
-          const ctx = canvas.getContext('2d');
-          const scale = 48 / GRID_SIZE;
-
-          frame.layers.forEach(l => {
-            if (!l.visible) return;
-            for (let r = 0; r < GRID_SIZE; r++) {
-              for (let c = 0; c < GRID_SIZE; c++) {
-                const cell = l.data[r][c];
-                if (cell) {
-                  ctx.fillStyle = cell.color;
-                  ctx.globalAlpha = cell.opacity;
-                  ctx.fillRect(c * scale, r * scale, scale, scale);
-                }
-              }
+        const importedFrames = [];
+        groups.forEach(g => {
+          const frame = createEmptyPixels(state.width, state.height);
+          const rects = g.querySelectorAll('rect');
+          rects.forEach(r => {
+            const x = parseInt(r.getAttribute('x'));
+            const y = parseInt(r.getAttribute('y'));
+            const fill = r.getAttribute('fill');
+            const op = parseFloat(r.getAttribute('fill-opacity') || '1');
+            if (x < state.width && y < state.height) {
+              frame[y][x] = { color: fill, opacity: op };
             }
           });
+          importedFrames.push(frame);
+        });
 
-          card.appendChild(canvas);
-          card.innerHTML += `<span class="frame-num">F${idx + 1}</span>`;
-          bar.appendChild(card);
+        if (importedFrames.length > 0) {
+          state.frames = importedFrames;
+          state.activeFrameIndex = 0;
+          saveHistory();
+          renderAll();
+          return true;
+        }
+      } catch (err) {
+        console.error("Native SVG parsing failed:", err);
+      }
+      return false;
+    }
+
+    // --- COLOR REDUCTION ---
+    function reduceColors() {
+      const maxColors = parseInt(colorReduceCount.value);
+      const frame = state.frames[state.activeFrameIndex];
+      
+      // 1. Collect unique colors
+      const colorCounts = {};
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = frame[y][x];
+          if (cell && cell.opacity > 0) {
+            colorCounts[cell.color] = (colorCounts[cell.color] || 0) + 1;
+          }
+        }
+      }
+
+      const uniqueHexes = Object.keys(colorCounts);
+      if (uniqueHexes.length <= maxColors) {
+        showToast('Already within limit');
+        return;
+      }
+
+      // Simple Palette Selection: Pick top N most used colors
+      const palette = uniqueHexes
+        .sort((a, b) => colorCounts[b] - colorCounts[a])
+        .slice(0, maxColors)
+        .map(hex => hexToRgb(hex));
+
+      // 2. Map every pixel to nearest palette color
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = frame[y][x];
+          if (cell && cell.opacity > 0) {
+            const rgb = hexToRgb(cell.color);
+            cell.color = getClosestColor(rgb, palette);
+          }
+        }
+      }
+
+      saveHistory();
+      renderAll();
+      showToast('Colors Reduced');
+    }
+
+    function hexToRgb(hex) {
+      const c = hex.replace('#', '');
+      return {
+        r: parseInt(c.substring(0, 2), 16),
+        g: parseInt(c.substring(2, 4), 16),
+        b: parseInt(c.substring(4, 6), 16)
+      };
+    }
+
+    function getClosestColor(target, palette) {
+      let minDistance = Infinity;
+      let closest = palette[0];
+
+      palette.forEach(p => {
+        const dist = Math.pow(target.r - p.r, 2) + 
+                     Math.pow(target.g - p.g, 2) + 
+                     Math.pow(target.b - p.b, 2);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closest = p;
+        }
+      });
+
+      const r = closest.r.toString(16).padStart(2, '0');
+      const g = closest.g.toString(16).padStart(2, '0');
+      const b = closest.b.toString(16).padStart(2, '0');
+      return `#${r}${g}${b}`.toUpperCase();
+    }
+
+    // --- SVG GENERATION ---
+    function buildSVG() {
+      const numFrames = state.frames.length;
+      const frameDuration = (1 / state.fps).toFixed(3);
+      const totalDuration = (numFrames * frameDuration).toFixed(3);
+
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${state.width} ${state.height}" shape-rendering="crispEdges">\n`;
+
+      if (numFrames === 1) {
+        // Static SVG
+        const frame = state.frames[0];
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            const cell = frame[y][x];
+            if (cell && cell.opacity > 0) {
+              const opAttr = cell.opacity < 1 ? ` fill-opacity="${cell.opacity}"` : '';
+              svg += `  <rect x="${x}" y="${y}" width="1" height="1" fill="${cell.color}"${opAttr}/>\n`;
+            }
+          }
+        }
+      } else {
+        // Animated SVG using SMIL keyTimes logic for zero overlap
+        state.frames.forEach((frame, idx) => {
+          const keyTimes = [];
+          const values = [];
+
+          for (let i = 0; i <= numFrames; i++) {
+            keyTimes.push((i / numFrames).toFixed(3));
+            values.push(i === idx || (i === numFrames && idx === 0) ? 'inline' : 'none');
+          }
+
+          // Force discrete steps
+          const calcMode = 'calcMode="discrete"';
+          
+          svg += `  <g class="frame" display="${idx === 0 ? 'inline' : 'none'}">\n`;
+          svg += `    <animate attributeName="display" values="${values.join(';')}" keyTimes="${keyTimes.join(';')}" dur="${totalDuration}s" repeatCount="indefinite" ${calcMode}/>\n`;
+
+          for (let y = 0; y < state.height; y++) {
+            for (let x = 0; x < state.width; x++) {
+              const cell = frame[y][x];
+              if (cell && cell.opacity > 0) {
+                const opAttr = cell.opacity < 1 ? ` fill-opacity="${cell.opacity}"` : '';
+                svg += `    <rect x="${x}" y="${y}" width="1" height="1" fill="${cell.color}"${opAttr}/>\n`;
+              }
+            }
+          }
+          svg += `  </g>\n`;
         });
       }
 
-      togglePlay() {
-        this.isPlaying = !this.isPlaying;
-        const btn = document.getElementById('btn-play');
-        if (this.isPlaying) {
-          btn.innerText = 'Pause';
-          btn.classList.add('btn-danger');
-          this.animTimer = setInterval(() => {
-            this.currentFrameIdx = (this.currentFrameIdx + 1) % this.frames.length;
-            this.update();
-          }, 1000 / this.fps);
+      svg += `</svg>`;
+      return svg;
+    }
+
+    // --- EVENT LISTENERS ---
+    function setupEventListeners() {
+      // Canvas Drawing
+      editorCanvas.addEventListener('pointerdown', handlePointerDown);
+      editorCanvas.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+
+      // Tool Switchers
+      pencilBtn.addEventListener('click', () => { state.activeTool = 'pencil'; updateUI(); });
+      eraserBtn.addEventListener('click', () => { state.activeTool = 'eraser'; updateUI(); });
+      pickerBtn.addEventListener('click', () => { state.activeTool = 'picker'; updateUI(); });
+
+      // Actions
+      undoBtn.addEventListener('click', undo);
+      redoBtn.addEventListener('click', redo);
+      clearBtn.addEventListener('click', () => {
+        state.frames[state.activeFrameIndex] = createEmptyPixels(state.width, state.height);
+        saveHistory();
+        renderAll();
+      });
+
+      // Color System Inputs
+      nativeColor.addEventListener('input', (e) => {
+        state.currentColor = e.target.value.toUpperCase();
+        hexInput.value = state.currentColor;
+      });
+
+      hexInput.addEventListener('change', (e) => {
+        let val = e.target.value;
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          state.currentColor = val.toUpperCase();
+          nativeColor.value = state.currentColor;
         } else {
-          btn.innerText = 'Play';
-          btn.classList.remove('btn-danger');
-          clearInterval(this.animTimer);
+          hexInput.value = state.currentColor;
         }
-      }
+      });
 
-      setFPS(val) {
-        this.fps = parseInt(val);
-        if (this.isPlaying) {
-          this.togglePlay();
-          this.togglePlay();
+      opacitySlider.addEventListener('input', (e) => {
+        state.currentOpacity = parseInt(e.target.value) / 100;
+        opacityVal.textContent = `${e.target.value}%`;
+      });
+
+      // Frame Controls
+      addFrameBtn.addEventListener('click', () => {
+        state.frames.push(createEmptyPixels(state.width, state.height));
+        state.activeFrameIndex = state.frames.length - 1;
+        saveHistory();
+        renderAll();
+      });
+
+      dupFrameBtn.addEventListener('click', () => {
+        const copy = deepCopyPixels(state.frames[state.activeFrameIndex]);
+        state.frames.splice(state.activeFrameIndex + 1, 0, copy);
+        state.activeFrameIndex++;
+        saveHistory();
+        renderAll();
+      });
+
+      delFrameBtn.addEventListener('click', () => {
+        if (state.frames.length <= 1) {
+          showToast('Cannot delete last frame');
+          return;
         }
-      }
-
-      // ==========================================================================
-      // LAYER MANAGEMENT
-      // ==========================================================================
-      addLayer() {
-        this.saveUndoState();
-        const id = this.frames[this.currentFrameIdx].layers.length + 1;
-        this.frames.forEach(frame => {
-          frame.layers.push({
-            name: `Layer ${id}`, visible: true, locked: false, opacity: 1.0, data: this.createBlankGrid()
-          });
-        });
-        this.activeLayerIdx = this.frames[this.currentFrameIdx].layers.length - 1;
-        this.update();
-      }
-
-      renderLayersUI() {
-        const list = document.getElementById('layers-list');
-        list.innerHTML = '';
-        const layers = this.frames[this.currentFrameIdx].layers;
-
-        layers.forEach((layer, idx) => {
-          const item = document.createElement('div');
-          item.className = `layer-item ${idx === this.activeLayerIdx ? 'active' : ''}`;
-          item.onclick = () => { this.activeLayerIdx = idx; this.update(); };
-          item.innerHTML = `
-            <span>${layer.name}</span>
-            <div>
-              <button class="btn btn-sm" onclick="event.stopPropagation(); app.toggleLayerVis(${idx})">${layer.visible ? '👁' : '🚫'}</button>
-            </div>
-          `;
-          list.appendChild(item);
-        });
-      }
-
-      toggleLayerVis(idx) {
-        const layer = this.frames[this.currentFrameIdx].layers[idx];
-        layer.visible = !layer.visible;
-        this.update();
-      }
-
-      // ==========================================================================
-      // ANIMATED SVG EXPORT GENERATOR (NATIVE <animate>)
-      // ==========================================================================
-      generateSVGOutput() {
-        const dur = (1 / this.fps).toFixed(2);
-        const totalDur = (this.frames.length * dur).toFixed(2);
-        let keyframesGroup = '';
-
-        // Generate pixel elements for each frame wrapped in display toggle animation
-        this.frames.forEach((frame, fIdx) => {
-          let rects = '';
-          frame.layers.forEach(layer => {
-            if (!layer.visible) return;
-            for (let r = 0; r < GRID_SIZE; r++) {
-              for (let c = 0; c < GRID_SIZE; c++) {
-                const cell = layer.data[r][c];
-                if (cell) {
-                  const op = (cell.opacity * layer.opacity).toFixed(2);
-                  rects += `\n    <rect x="${c}" y="${r}" width="1" height="1" fill="${cell.color}"${op < 1.0 ? ` fill-opacity="${op}"` : ''}/>`;
-                }
-              }
-            }
-          });
-
-          if (this.frames.length > 1) {
-            // Frame timing via SVG <animate> opacity toggle
-            const beginTime = (fIdx * dur).toFixed(2);
-            rects = `
-  <g id="frame_${fIdx}" opacity="${fIdx === 0 ? '1' : '0'}">
-    <animate attributeName="opacity" values="0;1;0" keyTimes="0;0.01;0.99" dur="${totalDur}s" begin="${beginTime}s" repeatCount="indefinite" />
-    ${rects}
-  </g>`;
-          }
-
-          keyframesGroup += rects;
-        });
-
-        // Clean, self-contained animated SVG code (Transparent Background)
-        const svgCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="480" height="480" shape-rendering="crispEdges">
-  <!-- Generated by PixelFrame 24 Workstation -->
-  ${keyframesGroup}
-</svg>`;
-
-        document.getElementById('svg-output').value = svgCode;
-      }
-
-      // ==========================================================================
-      // UI CONTROLS & PALETTES
-      // ==========================================================================
-      setTool(t) {
-        this.activeTool = t;
-        document.querySelectorAll('[id^="tool-"]').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById(`tool-${t}`);
-        if (btn) btn.classList.add('active');
-      }
-
-      setColor(hex) {
-        this.activeColor = hex;
-        document.getElementById('picker-color').value = hex;
-        document.getElementById('color-swatch').style.background = hex;
-        this.addHistoryColor(hex);
-      }
-
-      setOpacity(val) {
-        this.activeOpacity = parseFloat(val);
-        document.getElementById('opacity-val').innerText = Math.round(this.activeOpacity * 100);
-      }
-
-      addHistoryColor(hex) {
-        if (!this.colorHistory.includes(hex)) {
-          this.colorHistory.unshift(hex);
-          if (this.colorHistory.length > 16) this.colorHistory.pop();
-          this.renderHistoryPalettes();
+        state.frames.splice(state.activeFrameIndex, 1);
+        if (state.activeFrameIndex >= state.frames.length) {
+          state.activeFrameIndex = state.frames.length - 1;
         }
-      }
+        saveHistory();
+        renderAll();
+      });
 
-      renderPresetPalettes() {
-        const grid = document.getElementById('preset-grid');
-        grid.innerHTML = '';
-        PRESET_COLORS.forEach(c => {
-          const swatch = document.createElement('div');
-          swatch.className = 'palette-swatch';
-          swatch.style.background = c;
-          swatch.onclick = () => this.setColor(c);
-          grid.appendChild(swatch);
-        });
-      }
+      onionBtn.addEventListener('click', () => {
+        state.onionSkin = !state.onionSkin;
+        onionBtn.textContent = `Onion: ${state.onionSkin ? 'ON' : 'OFF'}`;
+        onionBtn.classList.toggle('active', state.onionSkin);
+        renderOnionCanvas();
+      });
 
-      renderHistoryPalettes() {
-        const grid = document.getElementById('history-grid');
-        grid.innerHTML = '';
-        this.colorHistory.forEach(c => {
-          const swatch = document.createElement('div');
-          swatch.className = 'palette-swatch';
-          swatch.style.background = c;
-          swatch.onclick = () => this.setColor(c);
-          grid.appendChild(swatch);
-        });
-      }
+      // Animation Playback
+      playBtn.addEventListener('click', () => {
+        if (state.isPlaying) {
+          clearInterval(state.playInterval);
+          state.isPlaying = false;
+          playBtn.textContent = 'Play';
+          renderAll();
+        } else {
+          state.isPlaying = true;
+          playBtn.textContent = 'Pause';
+          const intervalMs = 1000 / state.fps;
+          state.playInterval = setInterval(() => {
+            state.activeFrameIndex = (state.activeFrameIndex + 1) % state.frames.length;
+            renderEditorCanvas();
+            renderTimeline();
+          }, intervalMs);
+        }
+      });
 
-      toggleGrid() {
-        this.showGrid = !this.showGrid;
-        document.getElementById('btn-grid').innerText = `Grid: ${this.showGrid ? 'ON' : 'OFF'}`;
-        this.drawGrid();
-      }
+      fpsSelect.addEventListener('change', (e) => {
+        state.fps = parseInt(e.target.value);
+        if (state.isPlaying) {
+          playBtn.click();
+          playBtn.click();
+        }
+      });
 
-      toggleOnion() {
-        this.showOnion = !this.showOnion;
-        document.getElementById('btn-onion').innerText = `Onion: ${this.showOnion ? 'ON' : 'OFF'}`;
-        this.update();
-      }
+      // Grid Size
+      gridSizeSelect.addEventListener('change', (e) => {
+        const size = parseInt(e.target.value);
+        if (confirm('Changing grid size will clear your artwork. Continue?')) {
+          resetGrid(size, size);
+        } else {
+          gridSizeSelect.value = state.width;
+        }
+      });
 
-      toggleDiff() {
-        this.showDiff = !this.showDiff;
-        document.getElementById('btn-diff').innerText = `Diff: ${this.showDiff ? 'ON' : 'OFF'}`;
-        this.update();
-      }
+      // Import File Trigger
+      fileTriggerBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0]);
+        }
+      });
 
-      loadGuide(type) {
-        document.getElementById('guide-content').innerText = GUIDES[type] || GUIDES.idle;
-      }
+      // Color Reduction
+      reduceColorsBtn.addEventListener('click', reduceColors);
 
-      // ==========================================================================
-      // EVENTS & CANVAS INTERACTION
-      // ==========================================================================
-      setupEvents() {
-        let isDrawing = false;
-        let startX = 0, startY = 0;
+      // SVG Generation & Output
+      generateSvgBtn.addEventListener('click', () => {
+        const svgStr = buildSVG();
+        svgOutput.value = svgStr;
+        svgPreviewContainer.innerHTML = svgStr;
+        showToast('SVG Generated');
+      });
 
-        const getCoords = (e) => {
-          const rect = this.mainCanvas.getBoundingClientRect();
-          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-          const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-          const x = Math.floor((clientX - rect.left) / (rect.width / GRID_SIZE));
-          const y = Math.floor((clientY - rect.top) / (rect.height / GRID_SIZE));
-          return [x, y];
-        };
+      copySvgBtn.addEventListener('click', () => {
+        if (!svgOutput.value) generateSvgBtn.click();
+        navigator.clipboard.writeText(svgOutput.value)
+          .then(() => showToast('SVG COPIED'))
+          .catch(() => showToast('Failed to copy'));
+      });
 
-        const startDraw = (e) => {
-          isDrawing = true;
-          this.saveUndoState();
-          const [x, y] = getCoords(e);
-          startX = x; startY = y;
-
-          if (this.activeTool === 'line' || this.activeTool === 'rect') return;
-          this.paintPixel(x, y);
-          this.update();
-        };
-
-        const moveDraw = (e) => {
-          if (!isDrawing) return;
-          const [x, y] = getCoords(e);
-          if (this.activeTool === 'pencil' || this.activeTool === 'eraser') {
-            this.paintPixel(x, y);
-            this.update();
-          }
-        };
-
-        const stopDraw = (e) => {
-          if (!isDrawing) return;
-          isDrawing = false;
-          if (e.type !== 'mouseleave') {
-            const [x, y] = getCoords(e || e.changedTouches[0]);
-            if (this.activeTool === 'line') this.drawLine(startX, startY, x, y);
-            if (this.activeTool === 'rect') this.drawRect(startX, startY, x, y);
-          }
-          this.update();
-        };
-
-        // Pointer / Touch bindings
-        this.mainCanvas.addEventListener('mousedown', startDraw);
-        this.mainCanvas.addEventListener('mousemove', moveDraw);
-        window.addEventListener('mouseup', stopDraw);
-
-        this.mainCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, { passive: false });
-        this.mainCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveDraw(e); }, { passive: false });
-        window.addEventListener('touchend', stopDraw);
-
-        // Global Keyboard Shortcuts
-        window.addEventListener('keydown', (e) => {
-          if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-          if (e.key === 'p' || e.key === 'P') this.setTool('pencil');
-          if (e.key === 'e' || e.key === 'E') this.setTool('eraser');
-          if (e.key === 'g' || e.key === 'G') this.setTool('fill');
-          if (e.key === 'i' || e.key === 'I') this.setTool('eyedropper');
-          if (e.key === 'z' || e.key === 'Z') this.undo();
-          if (e.key === 'y' || e.key === 'Y') this.redo();
-          if (e.code === 'Space') { e.preventDefault(); this.togglePlay(); }
-        });
-      }
-
-      // ==========================================================================
-      // EXPORT & PROJECT UTILITIES
-      // ==========================================================================
-      copySVG() {
-        const svg = document.getElementById('svg-output').value;
-        navigator.clipboard.writeText(svg).then(() => {
-          const toast = document.getElementById('toast');
-          toast.style.display = 'block';
-          setTimeout(() => toast.style.display = 'none', 2000);
-        });
-      }
-
-      downloadSVG() {
-        const svg = document.getElementById('svg-output').value;
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
+      downloadSvgBtn.addEventListener('click', () => {
+        if (!svgOutput.value) generateSvgBtn.click();
+        const blob = new Blob([svgOutput.value], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        a.href = url;
         a.download = 'pixel-animation.svg';
         a.click();
-      }
+        URL.revokeObjectURL(url);
+      });
 
-      exportJSON() {
-        const project = { frames: this.frames, fps: this.fps };
-        const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+      // Project Save / Load
+      saveProjBtn.addEventListener('click', () => {
+        const projectData = {
+          width: state.width,
+          height: state.height,
+          fps: state.fps,
+          frames: state.frames
+        };
+        const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'pixelframe-project.json';
+        a.href = url;
+        a.download = 'pixel-svg-project.json';
         a.click();
-      }
+        URL.revokeObjectURL(url);
+      });
 
-      importJSON(e) {
+      loadProjBtn.addEventListener('click', () => projInput.click());
+      projInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
             const data = JSON.parse(evt.target.result);
-            if (data.frames) {
-              this.frames = data.frames;
-              this.fps = data.fps || 10;
-              this.currentFrameIdx = 0;
-              this.update();
+            if (data.width && data.height && data.frames) {
+              state.width = data.width;
+              state.height = data.height;
+              state.fps = data.fps || 10;
+              state.frames = data.frames;
+              state.activeFrameIndex = 0;
+              gridSizeSelect.value = state.width;
+              fpsSelect.value = state.fps;
+              saveHistory();
+              renderAll();
+              showToast('Project Loaded');
             }
           } catch (err) {
-            alert('Invalid project file');
+            showToast('Invalid Project File');
           }
         };
         reader.readAsText(file);
-      }
+      });
     }
 
-    // Launch Application
-    const app = new PixelFrameApp();
+    // Start App
+    init();
   </script>
 </body>
 </html>
