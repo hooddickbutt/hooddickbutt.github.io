@@ -369,16 +369,31 @@
           
           <label style="font-size: 0.75rem; color: var(--text-muted);">Animation Preset:</label>
           <select id="animStylePreset">
-            <option value="glitch">1. Cyber Neon Glitch</option>
-            <option value="rgbCycle">2. Smooth Color Cycle (RGB Wave)</option>
-            <option value="sparkle">3. Pulsing Sparkle / Stars</option>
-            <option value="scanline">4. Hologram Scanline</option>
-            <option value="bounce">5. Pixel Bounce / Breathing</option>
-            <option value="fireGlow">6. Flame / Fire Glow</option>
-            <option value="matrix">7. Matrix Digital Rain</option>
-            <option value="disco">8. Party Disco Flash</option>
-            <option value="dissolve">9. Pixel Dissolve Shift</option>
-            <option value="vortex">10. Color Vortex Pulse</option>
+            <optgroup label="Signature">
+              <option value="foil" selected>Iridescent Foil</option>
+              <option value="aurora">Aurora Veil</option>
+              <option value="caustic">Glass Caustics</option>
+              <option value="prism">Prism Sweep</option>
+              <option value="silk">Silk Wave</option>
+              <option value="orbit">Floating Orbit</option>
+              <option value="tilt">Parallax Tilt</option>
+              <option value="edgeglow">Neon Edge Glow</option>
+              <option value="chromatic">Chromatic Pulse</option>
+              <option value="dusk">Cinematic Dusk</option>
+              <option value="embers">Rising Embers</option>
+            </optgroup>
+            <optgroup label="Classic">
+              <option value="glitch">Cyber Neon Glitch</option>
+              <option value="rgbCycle">Smooth Color Cycle</option>
+              <option value="sparkle">Pulsing Sparkle</option>
+              <option value="scanline">Hologram Scanline</option>
+              <option value="bounce">Pixel Bounce</option>
+              <option value="fireGlow">Flame Glow</option>
+              <option value="matrix">Matrix Rain</option>
+              <option value="disco">Club Spotlight</option>
+              <option value="dissolve">Pixel Dissolve</option>
+              <option value="vortex">Color Vortex</option>
+            </optgroup>
           </select>
 
           <div style="display: flex; gap: 6px;">
@@ -386,6 +401,8 @@
               <option value="6">6 Frames</option>
               <option value="8">8 Frames</option>
               <option value="10" selected>10 Frames</option>
+              <option value="12">12 Frames</option>
+              <option value="16">16 Frames</option>
             </select>
             <button id="reapplyPresetBtn">Re-Animate</button>
           </div>
@@ -465,7 +482,8 @@
       historyIndex: -1,
       maxHistory: 50,
       recentColors: ['#FF0055', '#00FFCC', '#FFCC00', '#000000', '#FFFFFF'],
-      baseImageFrame: null
+      baseImageFrame: null,
+      animSalt: 0
     };
 
     const editorCanvas = document.getElementById('editorCanvas');
@@ -876,127 +894,456 @@
       return grid;
     }
 
+    function hash01(x, y, n = 0) {
+      let h = Math.imul(x + 374761393, 668265263) ^ Math.imul(y + 1440662683, 1274126177) ^ Math.imul((n | 0) + 17, 2246822519);
+      h = Math.imul(h ^ (h >>> 13), 3266489917);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+
+    function wrap01(v) {
+      return ((v % 1) + 1) % 1;
+    }
+
+    function clamp01(v) {
+      return Math.max(0, Math.min(1, v));
+    }
+
+    function shade(cell, fn) {
+      const rgb = hexToRgb(cell.color);
+      const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+      const mod = { h: hsl.h, s: hsl.s, l: hsl.l, opacity: cell.opacity };
+      fn(mod);
+      const out = hslToRgb(wrap01(mod.h), clamp01(mod.s), clamp01(mod.l));
+      return {
+        color: rgbToHex(out.r, out.g, out.b),
+        opacity: clamp01(mod.opacity)
+      };
+    }
+
+    function addPixel(frame, x, y, color, opacity, w, h) {
+      const ix = Math.round(x);
+      const iy = Math.round(y);
+      if (ix < 0 || iy < 0 || ix >= w || iy >= h || opacity <= 0.02) return;
+      const prev = frame[iy][ix];
+      if (!prev) {
+        frame[iy][ix] = { color, opacity: Math.min(1, opacity) };
+        return;
+      }
+      const tw = prev.opacity + opacity;
+      const p = hexToRgb(prev.color);
+      const s = hexToRgb(color);
+      frame[iy][ix] = {
+        color: rgbToHex(
+          (p.r * prev.opacity + s.r * opacity) / tw,
+          (p.g * prev.opacity + s.g * opacity) / tw,
+          (p.b * prev.opacity + s.b * opacity) / tw
+        ),
+        opacity: Math.min(1, tw)
+      };
+    }
+
+    function splat(frame, x, y, color, opacity, w, h) {
+      if (opacity <= 0.02) return;
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const fx = x - x0;
+      const fy = y - y0;
+      const spots = [
+        [x0, y0, (1 - fx) * (1 - fy)],
+        [x0 + 1, y0, fx * (1 - fy)],
+        [x0, y0 + 1, (1 - fx) * fy],
+        [x0 + 1, y0 + 1, fx * fy]
+      ];
+      for (let i = 0; i < spots.length; i++) {
+        const px = spots[i][0];
+        const py = spots[i][1];
+        const weight = spots[i][2];
+        if (weight < 0.045) continue;
+        addPixel(frame, px, py, color, opacity * weight, w, h);
+      }
+    }
+
+    function eachOpaque(base, w, h, fn) {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const cell = base[y][x];
+          if (cell && cell.opacity > 0) fn(cell, x, y);
+        }
+      }
+    }
+
+    function finalizeFrame(frame, w, h) {
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const cell = frame[y][x];
+          if (!cell) continue;
+          const opacity = Math.round(cell.opacity * 100) / 100;
+          if (opacity < 0.05) frame[y][x] = null;
+          else cell.opacity = opacity;
+        }
+      }
+    }
+
     function generatePresetFrames(baseFrame, style, totalFrames) {
-      const generatedFrames = [];
       const w = state.width;
       const h = state.height;
+      const salt = state.animSalt || 0;
+      const variant = salt % 5;
+      const generatedFrames = [];
+      const cx = (w - 1) / 2;
+      const cy = (h - 1) / 2;
+
+      function place(frame, x, y, color, opacity, subpixel) {
+        if (subpixel) splat(frame, x, y, color, opacity, w, h);
+        else addPixel(frame, x, y, color, opacity, w, h);
+      }
+
+      const painters = {
+        foil(base, frame, t) {
+          const freq = 0.52 + variant * 0.05;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const sheen = Math.sin(x * freq + y * freq * 0.62 - t);
+            const band = Math.max(0, sheen);
+            const ink = shade(cell, (m) => {
+              m.h += sheen * 0.08 + band * 0.05;
+              m.s = Math.min(1, m.s + band * 0.32);
+              m.l += band * 0.36 - 0.035;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        aurora(base, frame, t) {
+          const freq = 0.42 + variant * 0.025;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const veil = Math.sin(y * freq - t) * 0.68 + Math.sin(x * 0.24 + t) * 0.32;
+            const ink = shade(cell, (m) => {
+              m.h += veil * 0.16;
+              m.s = Math.min(1, m.s + 0.05 + Math.max(0, veil) * 0.14);
+              m.l += veil * 0.14;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        caustic(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const wave = Math.sin(x * 0.68 + t) * Math.sin(y * 0.64 - t) * 0.72
+              + Math.sin((x - y) * 0.36 + t) * 0.28;
+            const hot = Math.max(0, wave);
+            const ink = shade(cell, (m) => {
+              m.l += wave * 0.36;
+              m.h += hot * 0.06;
+              m.s = Math.min(1, m.s + hot * 0.22);
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        prism(base, frame, t) {
+          const sweep = (Math.sin(t - Math.PI / 2) * 0.5 + 0.5) * (w + 5) - 2.5;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const dist = x - sweep;
+            const influence = Math.exp(-(dist * dist) / 8);
+            const rainbow = 0.08 + Math.sin(t) * 0.08 + x / Math.max(1, w) * 0.06;
+            const ink = shade(cell, (m) => {
+              m.h = m.h * (1 - influence * 0.72) + rainbow * influence * 0.72;
+              m.s = Math.min(1, m.s + influence * 0.48);
+              m.l += influence * 0.42;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        silk(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const wave = Math.sin(y * 0.52 + t);
+            const ink = shade(cell, (m) => { m.l += wave * 0.08; });
+            place(frame, x + wave * 0.95, y, ink.color, ink.opacity, true);
+          });
+        },
+
+        orbit(base, frame, t) {
+          const dx = Math.cos(t) * 0.78;
+          const dy = Math.sin(t) * 0.58;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const ink = shade(cell, (m) => { m.l += Math.sin(t) * 0.05; });
+            place(frame, x + dx, y + dy, ink.color, ink.opacity, true);
+          });
+        },
+
+        tilt(base, frame, t) {
+          const lean = Math.sin(t) * 2.5;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const depth = (y - cy) / Math.max(1, h);
+            const ink = shade(cell, (m) => { m.l += lean * depth * 0.07; });
+            place(frame, x + lean * depth, y, ink.color, ink.opacity, true);
+          });
+        },
+
+        edgeglow(base, frame, t) {
+          const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+          const lumOf = (pixel) => {
+            const rgb = hexToRgb(pixel.color);
+            return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+          };
+          const rims = [];
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const lum = lumOf(cell);
+            let edge = 0;
+            let open = false;
+            for (let i = 0; i < dirs.length; i++) {
+              const nx = x + dirs[i][0];
+              const ny = y + dirs[i][1];
+              const neighbor = (nx < 0 || ny < 0 || nx >= w || ny >= h) ? null : base[ny][nx];
+              if (!neighbor || neighbor.opacity < 0.18) open = true;
+              else {
+                const jump = Math.abs(lumOf(neighbor) - lum);
+                if (jump > 0.34) edge = Math.max(edge, Math.min(1, (jump - 0.34) / 0.45));
+              }
+            }
+            if (open) edge = 1;
+            const wave = 0.5 + 0.5 * Math.sin(t - (x + y) * 0.34);
+            const ink = shade(cell, (m) => {
+              if (edge > 0) {
+                m.s = Math.min(1, m.s + 0.22 * edge);
+                m.l += (0.05 + wave * 0.36) * edge;
+                if (open) m.h += 0.035 * Math.sin(t);
+              } else {
+                m.l += 0.03 * Math.sin(t);
+              }
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+            if (open) rims.push({ x, y, color: ink.color, opacity: cell.opacity, wave });
+          });
+          rims.forEach((rim) => {
+            dirs.forEach((dir) => {
+              const nx = rim.x + dir[0];
+              const ny = rim.y + dir[1];
+              if (nx < 0 || ny < 0 || nx >= w || ny >= h) return;
+              const neighbor = base[ny][nx];
+              if (neighbor && neighbor.opacity >= 0.18) return;
+              place(frame, nx, ny, rim.color, (0.16 + rim.wave * 0.26) * rim.opacity, false);
+            });
+          });
+        },
+
+        chromatic(base, frame, t) {
+          const shift = Math.sin(t) * 1.2;
+          const amp = Math.abs(shift) / 1.2;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            place(frame, x, y, cell.color, cell.opacity, false);
+            if (amp < 0.08) return;
+            const rgb = hexToRgb(cell.color);
+            place(frame, x - shift, y, rgbToHex(Math.min(255, rgb.r + 28), rgb.g * 0.12, rgb.b * 0.12), cell.opacity * 0.4 * amp, true);
+            place(frame, x + shift, y, rgbToHex(rgb.r * 0.12, rgb.g * 0.22, Math.min(255, rgb.b + 36)), cell.opacity * 0.4 * amp, true);
+          });
+        },
+
+        dusk(base, frame, t) {
+          const warmth = Math.sin(t);
+          const warm = Math.max(0, warmth);
+          const cool = Math.max(0, -warmth);
+          const maxD = Math.hypot(cx, cy) || 1;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const vig = Math.hypot(x - cx, y - cy) / maxD;
+            const ink = shade(cell, (m) => {
+              m.h += warm * 0.05 + cool * 0.08 * (0.58 - m.h);
+              m.s += warm * 0.16 - cool * 0.12;
+              m.l += warm * 0.07 - cool * 0.11 - vig * (0.06 + cool * 0.08 + warm * 0.04);
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        embers(base, frame, t, progress) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const heat = 1 - y / Math.max(1, h - 1);
+            const flick = Math.sin(t * 2 + y * 0.5 + x * 0.35);
+            const ink = shade(cell, (m) => {
+              const pull = heat * 0.24;
+              m.h = m.h * (1 - pull) + 0.06 * pull;
+              m.s = Math.min(1, m.s + heat * 0.1);
+              m.l += flick * 0.07 * heat;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+          const count = Math.max(6, Math.round(w * 0.48));
+          for (let i = 0; i < count; i++) {
+            const seed = hash01(i, 11, salt);
+            const seed2 = hash01(i, 29, salt);
+            const speed = seed2 > 0.72 ? 2 : 1;
+            const life = (seed + progress * speed) % 1;
+            const fade = Math.sin(life * Math.PI);
+            const ex = seed * Math.max(0, w - 1) + Math.sin(t * speed + seed * 6.2) * 0.7;
+            const ey = (h + 1) - life * (h + 3);
+            const color = life < 0.38 ? '#FFE1B0' : '#FF6A2A';
+            place(frame, ex, ey, color, fade * 0.88, true);
+          }
+        },
+
+        glitch(base, frame, t) {
+          const pulse = Math.pow(Math.max(0, Math.sin(t * 2)), 3);
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const slice = Math.floor(y / 2);
+            const active = hash01(slice, 2, salt) > 0.58;
+            const dir = hash01(slice, 5, salt) > 0.5 ? 1 : -1;
+            const reach = 2 + (hash01(slice, 9, salt) > 0.5 ? 1 : 0);
+            const shift = active ? dir * reach * pulse : 0;
+            const ink = shade(cell, (m) => {
+              if (shift !== 0) {
+                m.h += dir * 0.08 * pulse;
+                m.l += 0.16 * pulse;
+              }
+            });
+            if (shift === 0) place(frame, x, y, ink.color, ink.opacity, false);
+            else {
+              place(frame, x, y, ink.color, ink.opacity * 0.3, false);
+              place(frame, x + shift, y, ink.color, ink.opacity, true);
+            }
+          });
+        },
+
+        rgbCycle(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const ink = shade(cell, (m) => {
+              m.h += Math.sin(t + x * 0.16 + y * 0.05) * 0.11;
+              m.s = Math.min(1, m.s + 0.06);
+              m.l += Math.sin(t * 2 + y * 0.22) * 0.045;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        sparkle(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const phase = hash01(x, y, salt) * Math.PI * 2;
+            const twinkle = Math.pow(Math.max(0, Math.sin(t * 2 + phase)), 4);
+            const ink = shade(cell, (m) => {
+              m.l += Math.sin(t) * 0.045 + twinkle * 0.62;
+              m.s = Math.min(1, m.s + twinkle * 0.34);
+              const mix = Math.min(1, Math.max(0, (twinkle - 0.4) / 0.45));
+              m.h = m.h * (1 - mix * 0.55) + 0.13 * mix * 0.55;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        scanline(base, frame, t, progress) {
+          const scan = progress * h;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const dist = Math.min(Math.abs(y - scan), h - Math.abs(y - scan));
+            const band = Math.exp(-(dist * dist) / 2.5);
+            const scan2 = (scan + h * 0.5) % h;
+            const dist2 = Math.min(Math.abs(y - scan2), h - Math.abs(y - scan2));
+            const glow = Math.min(1, band + Math.exp(-(dist2 * dist2) / 4.8) * 0.42);
+            const ink = shade(cell, (m) => {
+              m.h += glow * 0.07;
+              m.s = Math.min(1, m.s + glow * 0.2);
+              m.l += glow * 0.4 - 0.045;
+              m.opacity *= 0.9 + glow * 0.1;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        bounce(base, frame, t) {
+          const s = Math.sin(t);
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const ink = shade(cell, (m) => { m.l += s * 0.045; });
+            const sx = cx + (x - cx) * (1 + s * 0.045);
+            place(frame, sx, y + s * 0.95, ink.color, ink.opacity, true);
+          });
+        },
+
+        fireGlow(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const heat = 1 - y / Math.max(1, h - 1);
+            const flick = Math.sin(t * 2 + y * 0.55 + x * 0.22) * 0.65 + Math.sin(t * 3 + x * 0.8) * 0.35;
+            const ink = shade(cell, (m) => {
+              const pull = 0.18 + heat * 0.28;
+              m.h = m.h * (1 - pull) + 0.05 * pull;
+              m.h += flick * 0.03 * heat;
+              m.s = Math.min(1, m.s + heat * 0.16);
+              m.l += flick * 0.11 * (0.3 + heat);
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        matrix(base, frame, t, progress) {
+          const span = h + 2;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const speed = hash01(x, 4, salt) > 0.8 ? 2 : 1;
+            const head = (progress * span * speed + hash01(x, 2, salt) * span) % span;
+            let behind = head - y;
+            behind = ((behind % span) + span) % span;
+            const influence = behind < 5.2 ? Math.pow(1 - behind / 5.2, 1.15) : 0;
+            const ink = shade(cell, (m) => {
+              if (influence > 0) {
+                m.h = m.h * (1 - influence * 0.88) + 0.33 * influence * 0.88;
+                m.s = Math.min(1, m.s + influence * 0.55);
+                m.l = m.l * (1 - influence * 0.45) + influence * 0.78;
+              }
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        disco(base, frame, t) {
+          const ax = (Math.sin(t - Math.PI / 2) * 0.5 + 0.5) * w;
+          const by = (Math.sin(t) * 0.5 + 0.5) * h;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const la = Math.exp(-(Math.hypot(x - ax, y - h * 0.3) ** 2) / 9);
+            const lb = Math.exp(-(Math.hypot(x - (w - ax), y - by) ** 2) / 8);
+            const ink = shade(cell, (m) => {
+              m.h += la * 0.2 - lb * 0.14;
+              m.s = Math.min(1, m.s + (la + lb) * 0.42);
+              m.l += la * 0.55 + lb * 0.42 - 0.05;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        dissolve(base, frame, t) {
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const veil = 0.5 + 0.5 * Math.sin(t - x * 0.33 - y * 0.22);
+            const speck = Math.pow(Math.max(0, Math.sin(t * 2 + hash01(x, y, salt) * Math.PI * 2)), 6);
+            const ink = shade(cell, (m) => {
+              m.l += (veil - 0.5) * 0.14;
+              m.opacity *= 0.66 + 0.34 * veil;
+              if (speck > 0.55) m.opacity *= 0.38;
+            });
+            place(frame, x, y, ink.color, ink.opacity, false);
+          });
+        },
+
+        vortex(base, frame, t) {
+          const spin = Math.sin(t) * 0.14;
+          eachOpaque(base, w, h, (cell, x, y) => {
+            const dx = x - cx;
+            const dy = y - cy;
+            const dist = Math.hypot(dx, dy);
+            const ang = Math.atan2(dy, dx) + spin;
+            const wave = Math.sin(dist * 0.72 - t * 2);
+            const ink = shade(cell, (m) => {
+              m.h += wave * 0.045 + spin;
+              m.l += wave * 0.16;
+              m.s = Math.min(1, m.s + Math.max(0, wave) * 0.1);
+            });
+            place(frame, cx + Math.cos(ang) * dist, cy + Math.sin(ang) * dist, ink.color, ink.opacity, true);
+          });
+        }
+      };
+
+      const paint = painters[style] || painters.foil;
 
       for (let f = 0; f < totalFrames; f++) {
         const progress = f / totalFrames;
+        const t = progress * Math.PI * 2;
         const frame = createEmptyPixels(w, h);
-
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            const cell = baseFrame[y][x];
-            if (!cell || cell.opacity <= 0) continue;
-
-            let newColor = cell.color;
-            let newOpacity = cell.opacity;
-            let targetX = x;
-            let targetY = y;
-
-            const rgb = hexToRgb(cell.color);
-            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-            switch (style) {
-              case 'glitch': {
-                // 1. Cyber Neon Glitch (30% subtle shift)
-                if (Math.random() < 0.12 && f % 2 === 1) {
-                  targetX = (x + (Math.random() > 0.5 ? 1 : -1) + w) % w;
-                  hsl.h = (hsl.h + 0.1) % 1;
-                } else if (f % 3 === 0 && y % 4 === (f % 4)) {
-                  hsl.s = Math.min(1, hsl.s * 1.3);
-                  hsl.l = Math.min(0.9, hsl.l * 1.15);
-                }
-                break;
-              }
-
-              case 'rgbCycle': {
-                // 2. Color Cycle (90% color integrity maintained via 10% hue offset)
-                const hueOffset = Math.sin(progress * Math.PI * 2) * 0.08; 
-                hsl.h = (hsl.h + hueOffset + 1) % 1;
-                break;
-              }
-
-              case 'sparkle': {
-                // 3. Pulsing Sparkle / Stars
-                const isSparkle = (x * 7 + y * 13 + f * 5) % 9 === 0;
-                if (isSparkle) {
-                  hsl.l = Math.min(1, hsl.l + 0.35);
-                  hsl.s = Math.min(1, hsl.s + 0.2);
-                }
-                break;
-              }
-
-              case 'scanline': {
-                // 4. Hologram Scanline Wave
-                const scanY = Math.floor(progress * h);
-                if (y === scanY || y === (scanY + 1) % h) {
-                  hsl.l = Math.min(1, hsl.l + 0.3);
-                  hsl.s = Math.min(1, hsl.s + 0.2);
-                } else {
-                  hsl.l = Math.max(0.1, hsl.l * 0.85);
-                }
-                break;
-              }
-
-              case 'bounce': {
-                // 5. Breathing / Micro Bounce
-                const offsetY = Math.round(Math.sin(progress * Math.PI * 2) * 0.8);
-                targetY = Math.max(0, Math.min(h - 1, y + offsetY));
-                break;
-              }
-
-              case 'fireGlow': {
-                // 6. Fire / Flame Warm Glow
-                const flicker = Math.sin(f * 2 + y * 0.5) * 0.08;
-                hsl.h = (hsl.h + flicker * 0.2 + 1) % 1;
-                hsl.l = Math.min(0.9, Math.max(0.1, hsl.l + flicker));
-                break;
-              }
-
-              case 'matrix': {
-                // 7. Matrix Rain Flash
-                const dropPos = (Math.floor(progress * h * 2) + x * 2) % h;
-                if (y === dropPos) {
-                  hsl.h = 0.33; // Matrix Green accent
-                  hsl.l = 0.8;
-                }
-                break;
-              }
-
-              case 'disco': {
-                // 8. Party Disco Flash
-                if ((f + Math.floor(x / 4)) % 2 === 0) {
-                  hsl.h = (hsl.h + 0.05 * f) % 1;
-                  hsl.l = Math.min(0.85, hsl.l + 0.15);
-                }
-                break;
-              }
-
-              case 'dissolve': {
-                // 9. Pixel Dissolve / Particle Shift
-                if ((x + y + f) % 4 === 0) {
-                  newOpacity = Math.max(0.2, cell.opacity * 0.4);
-                }
-                break;
-              }
-
-              case 'vortex': {
-                // 10. Color Vortex Pulse
-                const distFromCenter = Math.sqrt(Math.pow(x - w/2, 2) + Math.pow(y - h/2, 2));
-                const wave = Math.sin(distFromCenter * 0.5 - progress * Math.PI * 2);
-                hsl.l = Math.min(0.9, Math.max(0.1, hsl.l + wave * 0.15));
-                break;
-              }
-            }
-
-            const newRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
-            newColor = rgbToHex(newRgb.r, newRgb.g, newRgb.b);
-
-            frame[targetY][targetX] = { color: newColor, opacity: newOpacity };
-          }
-        }
+        paint(baseFrame, frame, t, progress);
+        finalizeFrame(frame, w, h);
         generatedFrames.push(frame);
       }
       return generatedFrames;
@@ -1017,6 +1364,7 @@
       if (!state.baseImageFrame) {
         state.baseImageFrame = deepCopyPixels(state.frames[state.activeFrameIndex]);
       }
+      state.animSalt = (state.animSalt + 1) % 997;
       const count = parseInt(autoFrameCount.value);
       const style = animStylePreset.value;
 
