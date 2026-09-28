@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pixel SVG Auto-Animator Studio</title>
+  <style>
+    :root {
+      --bg-dark: #121318;
+      --bg-card: #1c1e24;
+      --bg-hover: #2a2d37;
+      --border: #2e323e;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 12px;
+      touch-action: manipulation;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        align-items: start;
+      }
+      .editor-column {
+        grid-column: 1;
+      }
+      .sidebar-column {
+        grid-column: 2;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    button, .btn {
+      background-color: var(--bg-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background-color 0.15s, border-color 0.15s;
+    }
+
+    button:hover, .btn:hover {
+      background-color: #353946;
+    }
+
+    button.active {
+      background-color: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.success {
+      background-color: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    button.danger {
+      background-color: rgba(239, 68, 68, 0.2);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    button.danger:hover {
+      background-color: var(--danger);
+      color: #fff;
+    }
+
+    input[type="text"], input[type="number"], select {
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .canvas-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-width: 450px;
+      margin: 0 auto;
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      background-image: 
+        linear-gradient(45deg, #252830 25%, transparent 25%), 
+        linear-gradient(-45deg, #252830 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #252830 75%), 
+        linear-gradient(-45deg, transparent 75%, #252830 75%);
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    #editorCanvas { z-index: 2; }
+    #onionCanvas { z-index: 1; opacity: 0.3; }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .color-picker-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: transparent;
+    }
+
+    input[type="color"]::-webkit-color-swatch {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+
+    .palette {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .timeline {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 4px 0 8px 0;
+    }
+
+    .frame-thumb {
+      flex: 0 0 54px;
+      height: 54px;
+      border: 2px solid var(--border);
+      border-radius: 4px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .frame-thumb.active { border-color: var(--accent); }
+    .frame-thumb canvas { width: 100%; height: 100%; }
+
+    .frame-thumb .frame-num {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: rgba(0,0,0,0.7);
+      font-size: 0.6rem;
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 90px;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      padding: 6px;
+      resize: vertical;
+    }
+
+    .preview-box {
+      width: 100px;
+      height: 100px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-box svg { width: 100%; height: 100%; image-rendering: pixelated; }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: var(--accent);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Pixel SVG Auto-Animator Studio</h1>
+    <div class="btn-group">
+      <button id="saveProjBtn">Save JSON</button>
+      <button id="loadProjBtn">Load JSON</button>
+      <input type="file" id="projInput" accept=".json" style="display:none">
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="editor-column">
+      <div class="card">
+        <div class="canvas-container">
+          <canvas id="onionCanvas"></canvas>
+          <canvas id="editorCanvas"></canvas>
+        </div>
+        <div class="stats-bar">
+          <span id="coordDisplay">X: -- Y: --</span>
+          <span id="pixelStats">PIXELS: 0 / 576</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 12px;">
+        <div class="card-title">Timeline Controls</div>
+        <div class="timeline" id="timeline"></div>
+        <div class="btn-group" style="margin-top: 8px;">
+          <button id="addFrameBtn">+ Blank</button>
+          <button id="dupFrameBtn">+ Duplicate</button>
+          <button id="delFrameBtn" class="danger">Delete Frame</button>
+          <button id="onionBtn">Onion: OFF</button>
+        </div>
+        <div class="btn-group" style="margin-top: 8px; align-items: center;">
+          <button id="playBtn">Play</button>
+          <label style="font-size: 0.8rem; margin-left: 8px;">FPS:</label>
+          <select id="fpsSelect" style="width: auto;">
+            <option value="2">2</option>
+            <option value="4">4</option>
+            <option value="6">6</option>
+            <option value="8">8</option>
+            <option value="10" selected>10</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-column">
+      <div class="card" style="border: 2px solid var(--accent);">
+        <div class="card-title" style="color: var(--accent);">Auto-Generator Engine</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button id="autoUploadTrigger" class="success">Upload Image to Auto-Animate</button>
+          <input type="file" id="autoFileInput" accept="image/*" style="display:none">
+          
+          <label style="font-size: 0.75rem; color: var(--text-muted);">Animation Preset:</label>
+          <select id="animStylePreset">
+            <option value="glitch">1. Cyber Neon Glitch</option>
+            <option value="rgbCycle">2. Smooth Color Cycle (RGB Wave)</option>
+            <option value="sparkle">3. Pulsing Sparkle / Stars</option>
+            <option value="scanline">4. Hologram Scanline</option>
+            <option value="bounce">5. Pixel Bounce / Breathing</option>
+            <option value="fireGlow">6. Flame / Fire Glow</option>
+            <option value="matrix">7. Matrix Digital Rain</option>
+            <option value="disco">8. Party Disco Flash</option>
+            <option value="dissolve">9. Pixel Dissolve Shift</option>
+            <option value="vortex">10. Color Vortex Pulse</option>
+          </select>
+
+          <div style="display: flex; gap: 6px;">
+            <select id="autoFrameCount">
+              <option value="6">6 Frames</option>
+              <option value="8">8 Frames</option>
+              <option value="10" selected>10 Frames</option>
+            </select>
+            <button id="reapplyPresetBtn">Re-Animate</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Setup & Pixel Grid</div>
+        <div style="display: flex; gap: 6px;">
+          <select id="gridSizeSelect">
+            <option value="8">8 x 8</option>
+            <option value="16">16 x 16</option>
+            <option value="24" selected>24 x 24</option>
+            <option value="32">32 x 32</option>
+          </select>
+          <button id="fileTriggerBtn">Raw Import</button>
+          <input type="file" id="fileInput" accept="image/png, image/svg+xml, image/jpeg" style="display:none">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Manual Tools</div>
+        <div class="tool-grid">
+          <button id="pencilBtn" class="active">Pencil</button>
+          <button id="eraserBtn">Eraser</button>
+          <button id="pickerBtn">Picker</button>
+        </div>
+        <div class="btn-group" style="margin-bottom: 12px;">
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+          <button id="clearBtn">Clear</button>
+        </div>
+
+        <div class="card-title">Color Inspector</div>
+        <div class="color-picker-row">
+          <input type="color" id="nativeColor" value="#FF0055">
+          <input type="text" id="hexInput" value="#FF0055" maxlength="7">
+        </div>
+        <div style="margin-bottom: 8px;">
+          <label style="font-size: 0.75rem; color: var(--text-muted);">Opacity: <span id="opacityVal">100%</span></label>
+          <input type="range" id="opacitySlider" min="0" max="100" value="100" style="width: 100%;">
+        </div>
+        <div class="palette" id="recentPalette"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">SVG Output</div>
+        <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+          <div class="preview-box" id="svgPreviewContainer"></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+            <button id="generateSvgBtn">Generate SVG</button>
+            <button id="copySvgBtn">Copy Code</button>
+            <button id="downloadSvgBtn">Download</button>
+          </div>
+        </div>
+        <textarea id="svgOutput" readonly placeholder="Click 'Generate SVG' to produce animated code..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Message</div>
+
+  <script>
+    const state = {
+      width: 24,
+      height: 24,
+      fps: 10,
+      activeFrameIndex: 0,
+      frames: [], 
+      activeTool: 'pencil',
+      currentColor: '#FF0055',
+      currentOpacity: 1.0,
+      onionSkin: false,
+      isPlaying: false,
+      playInterval: null,
+      history: [],
+      historyIndex: -1,
+      maxHistory: 50,
+      recentColors: ['#FF0055', '#00FFCC', '#FFCC00', '#000000', '#FFFFFF'],
+      baseImageFrame: null
+    };
+
+    const editorCanvas = document.getElementById('editorCanvas');
+    const editorCtx = editorCanvas.getContext('2d');
+    const onionCanvas = document.getElementById('onionCanvas');
+    const onionCtx = onionCanvas.getContext('2d');
+    
+    const pencilBtn = document.getElementById('pencilBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const pickerBtn = document.getElementById('pickerBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    
+    const nativeColor = document.getElementById('nativeColor');
+    const hexInput = document.getElementById('hexInput');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityVal = document.getElementById('opacityVal');
+    const recentPalette = document.getElementById('recentPalette');
+    
+    const timeline = document.getElementById('timeline');
+    const addFrameBtn = document.getElementById('addFrameBtn');
+    const dupFrameBtn = document.getElementById('dupFrameBtn');
+    const delFrameBtn = document.getElementById('delFrameBtn');
+    const onionBtn = document.getElementById('onionBtn');
+    const playBtn = document.getElementById('playBtn');
+    const fpsSelect = document.getElementById('fpsSelect');
+    
+    const gridSizeSelect = document.getElementById('gridSizeSelect');
+    const fileTriggerBtn = document.getElementById('fileTriggerBtn');
+    const fileInput = document.getElementById('fileInput');
+    const coordDisplay = document.getElementById('coordDisplay');
+    const pixelStats = document.getElementById('pixelStats');
+    
+    const autoUploadTrigger = document.getElementById('autoUploadTrigger');
+    const autoFileInput = document.getElementById('autoFileInput');
+    const animStylePreset = document.getElementById('animStylePreset');
+    const autoFrameCount = document.getElementById('autoFrameCount');
+    const reapplyPresetBtn = document.getElementById('reapplyPresetBtn');
+
+    const generateSvgBtn = document.getElementById('generateSvgBtn');
+    const copySvgBtn = document.getElementById('copySvgBtn');
+    const downloadSvgBtn = document.getElementById('downloadSvgBtn');
+    const svgOutput = document.getElementById('svgOutput');
+    const svgPreviewContainer = document.getElementById('svgPreviewContainer');
+    
+    const saveProjBtn = document.getElementById('saveProjBtn');
+    const loadProjBtn = document.getElementById('loadProjBtn');
+    const projInput = document.getElementById('projInput');
+    const toast = document.getElementById('toast');
+
+    function init() {
+      resetGrid(24, 24);
+      setupEventListeners();
+      renderPalette();
+      updateUI();
+    }
+
+    function createEmptyPixels(w, h) {
+      const pixels = [];
+      for (let y = 0; y < h; y++) {
+        const row = [];
+        for (let x = 0; x < w; x++) {
+          row.push(null);
+        }
+        pixels.push(row);
+      }
+      return pixels;
+    }
+
+    function deepCopyPixels(pixels) {
+      return pixels.map(row => row.map(cell => cell ? { ...cell } : null));
+    }
+
+    function resetGrid(w, h) {
+      state.width = w;
+      state.height = h;
+      state.frames = [createEmptyPixels(w, h)];
+      state.baseImageFrame = null;
+      state.activeFrameIndex = 0;
+      state.history = [];
+      state.historyIndex = -1;
+      saveHistory();
+      renderAll();
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function saveHistory() {
+      if (state.historyIndex < state.history.length - 1) {
+        state.history = state.history.slice(0, state.historyIndex + 1);
+      }
+      const snapshot = deepCopyPixels(state.frames[state.activeFrameIndex]);
+      state.history.push(snapshot);
+      if (state.history.length > state.maxHistory) {
+        state.history.shift();
+      } else {
+        state.historyIndex++;
+      }
+    }
+
+    function undo() {
+      if (state.historyIndex > 0) {
+        state.historyIndex--;
+        state.frames[state.activeFrameIndex] = deepCopyPixels(state.history[state.historyIndex]);
+        renderAll();
+      }
+    }
+
+    function redo() {
+      if (state.historyIndex < state.history.length - 1) {
+        state.historyIndex++;
+        state.frames[state.activeFrameIndex] = deepCopyPixels(state.history[state.historyIndex]);
+        renderAll();
+      }
+    }
+
+    function renderAll() {
+      renderEditorCanvas();
+      renderOnionCanvas();
+      renderTimeline();
+      updateStats();
+    }
+
+    function renderEditorCanvas() {
+      editorCanvas.width = state.width;
+      editorCanvas.height = state.height;
+      editorCtx.clearRect(0, 0, state.width, state.height);
+
+      const pixels = state.frames[state.activeFrameIndex];
+      if (!pixels) return;
+
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = pixels[y][x];
+          if (cell && cell.opacity > 0) {
+            editorCtx.fillStyle = cell.color;
+            editorCtx.globalAlpha = cell.opacity;
+            editorCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      editorCtx.globalAlpha = 1.0;
+    }
+
+    function renderOnionCanvas() {
+      onionCanvas.width = state.width;
+      onionCanvas.height = state.height;
+      onionCtx.clearRect(0, 0, state.width, state.height);
+
+      if (!state.onionSkin || state.activeFrameIndex === 0) return;
+
+      const prevPixels = state.frames[state.activeFrameIndex - 1];
+      if (!prevPixels) return;
+
+      for (let y = 0; y < state.height; y++) {
+        for (let x = 0; x < state.width; x++) {
+          const cell = prevPixels[y][x];
+          if (cell && cell.opacity > 0) {
+            onionCtx.fillStyle = cell.color;
+            onionCtx.globalAlpha = cell.opacity * 0.4;
+            onionCtx.fillRect(x, y, 1, 1);
+          }
+        }
+      }
+      onionCtx.globalAlpha = 1.0;
+    }
+
+    function renderTimeline() {
+      timeline.innerHTML = '';
+      state.frames.forEach((frame, idx) => {
+        const thumb = document.createElement('div');
+        thumb.className = `frame-thumb ${idx === state.activeFrameIndex ? 'active' : ''}`;
+        
+        const cvs = document.createElement('canvas');
+        cvs.width = state.width;
+        cvs.height = state.height;
+        const ctx = cvs.getContext('2d');
+        
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            const cell = frame[y][x];
+            if (cell && cell.opacity > 0) {
+              ctx.fillStyle = cell.color;
+              ctx.globalAlpha = cell.opacity;
+              ctx.fillRect(x, y, 1, 1);
+            }
+          }
+        }
+
+        const num = document.createElement('span');
+        num.className = 'frame-num';
+        num.textContent = idx + 1;
+
+        thumb.appendChild(cvs);
+        thumb.appendChild(num);
+
+        thumb.addEventListener('click', () => {
+          state.activeFrameIndex = idx;
+          state.history = [];
+          state.historyIndex = -1;
+          saveHistory();
+          renderAll();
+        });
+
+        timeline.appendChild(thumb);
+      });
+    }
+
+    function updateStats() {
+      const pixels = state.frames[state.activeFrameIndex];
+      let used = 0;
+      const total = state.width * state.height;
+
+      if (pixels) {
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            if (pixels[y][x] && pixels[y][x].opacity > 0) used++;
+          }
+        }
+      }
+
+      pixelStats.textContent = `PIXELS: ${used} / ${total}`;
+    }
+
+    let isDrawing = false;
+
+    function getCanvasCoords(e) {
+      const rect = editorCanvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      
+      const x = Math.floor(((clientX - rect.left) / rect.width) * state.width);
+      const y = Math.floor(((clientY - rect.top) / rect.height) * state.height);
+      
+      return {
+        x: Math.max(0, Math.min(state.width - 1, x)),
+        y: Math.max(0, Math.min(state.height - 1, y))
+      };
+    }
+
+    function applyTool(x, y) {
+      const currentFrame = state.frames[state.activeFrameIndex];
+      
+      if (state.activeTool === 'pencil') {
+        currentFrame[y][x] = {
+          color: state.currentColor,
+          opacity: state.currentOpacity
+        };
+        addRecentColor(state.currentColor);
+      } else if (state.activeTool === 'eraser') {
+        currentFrame[y][x] = null;
+      } else if (state.activeTool === 'picker') {
+        const cell = currentFrame[y][x];
+        if (cell) {
+          state.currentColor = cell.color;
+          state.currentOpacity = cell.opacity;
+          updateUI();
+        }
+        return;
+      }
+      renderEditorCanvas();
+      renderTimeline();
+      updateStats();
+    }
+
+    function handlePointerDown(e) {
+      isDrawing = true;
+      const { x, y } = getCanvasCoords(e);
+      coordDisplay.textContent = `X: ${x} Y: ${y}`;
+      applyTool(x, y);
+    }
+
+    function handlePointerMove(e) {
+      const { x, y } = getCanvasCoords(e);
+      coordDisplay.textContent = `X: ${x} Y: ${y}`;
+      if (isDrawing && state.activeTool !== 'picker') {
+        applyTool(x, y);
+      }
+    }
+
+    function handlePointerUp() {
+      if (isDrawing) {
+        isDrawing = false;
+        saveHistory();
+      }
+    }
+
+    function addRecentColor(hex) {
+      if (!state.recentColors.includes(hex)) {
+        state.recentColors.unshift(hex);
+        if (state.recentColors.length > 10) state.recentColors.pop();
+        renderPalette();
+      }
+    }
+
+    function renderPalette() {
+      recentPalette.innerHTML = '';
+      state.recentColors.forEach(color => {
+        const swatch = document.createElement('div');
+        swatch.className = 'swatch';
+        swatch.style.backgroundColor = color;
+        swatch.addEventListener('click', () => {
+          state.currentColor = color;
+          updateUI();
+        });
+        recentPalette.appendChild(swatch);
+      });
+    }
+
+    function updateUI() {
+      nativeColor.value = state.currentColor;
+      hexInput.value = state.currentColor.toUpperCase();
+      opacitySlider.value = Math.round(state.currentOpacity * 100);
+      opacityVal.textContent = `${opacitySlider.value}%`;
+
+      [pencilBtn, eraserBtn, pickerBtn].forEach(b => b.classList.remove('active'));
+      if (state.activeTool === 'pencil') pencilBtn.classList.add('active');
+      if (state.activeTool === 'eraser') eraserBtn.classList.add('active');
+      if (state.activeTool === 'picker') pickerBtn.classList.add('active');
+    }
+
+    // --- COLOR HELPER MATH ---
+    function hexToRgb(hex) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(char => char + char).join('');
+      return {
+        r: parseInt(c.substring(0, 2), 16) || 0,
+        g: parseInt(c.substring(2, 4), 16) || 0,
+        b: parseInt(c.substring(4, 6), 16) || 0
+      };
+    }
+
+    function rgbToHex(r, g, b) {
+      const toHex = (n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+      return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, l = (max + min) / 2;
+
+      if (max === min) {
+        h = s = 0;
+      } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return { h, s, l };
+    }
+
+    function hslToRgb(h, s, l) {
+      let r, g, b;
+      if (s === 0) {
+        r = g = b = l;
+      } else {
+        const hue2rgb = (p, q, t) => {
+          if (t < 0) t += 1;
+          if (t > 1) t -= 1;
+          if (t < 1/6) return p + (q - p) * 6 * t;
+          if (t < 1/2) return q;
+          if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+          return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+      }
+      return { r: r * 255, g: g * 255, b: b * 255 };
+    }
+
+    // --- AUTO-ANIMATOR GENERATION ALGORITHMS ---
+    function rasterizeImageToGrid(img, w, h) {
+      const cvs = document.createElement('canvas');
+      cvs.width = w;
+      cvs.height = h;
+      const ctx = cvs.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      
+      const imgData = ctx.getImageData(0, 0, w, h).data;
+      const grid = createEmptyPixels(w, h);
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = (y * w + x) * 4;
+          const a = imgData[idx + 3] / 255;
+          if (a > 0.05) {
+            grid[y][x] = {
+              color: rgbToHex(imgData[idx], imgData[idx + 1], imgData[idx + 2]),
+              opacity: parseFloat(a.toFixed(2))
+            };
+          }
+        }
+      }
+      return grid;
+    }
+
+    function generatePresetFrames(baseFrame, style, totalFrames) {
+      const generatedFrames = [];
+      const w = state.width;
+      const h = state.height;
+
+      for (let f = 0; f < totalFrames; f++) {
+        const progress = f / totalFrames;
+        const frame = createEmptyPixels(w, h);
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const cell = baseFrame[y][x];
+            if (!cell || cell.opacity <= 0) continue;
+
+            let newColor = cell.color;
+            let newOpacity = cell.opacity;
+            let targetX = x;
+            let targetY = y;
+
+            const rgb = hexToRgb(cell.color);
+            const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+
+            switch (style) {
+              case 'glitch': {
+                // 1. Cyber Neon Glitch (30% subtle shift)
+                if (Math.random() < 0.12 && f % 2 === 1) {
+                  targetX = (x + (Math.random() > 0.5 ? 1 : -1) + w) % w;
+                  hsl.h = (hsl.h + 0.1) % 1;
+                } else if (f % 3 === 0 && y % 4 === (f % 4)) {
+                  hsl.s = Math.min(1, hsl.s * 1.3);
+                  hsl.l = Math.min(0.9, hsl.l * 1.15);
+                }
+                break;
+              }
+
+              case 'rgbCycle': {
+                // 2. Color Cycle (90% color integrity maintained via 10% hue offset)
+                const hueOffset = Math.sin(progress * Math.PI * 2) * 0.08; 
+                hsl.h = (hsl.h + hueOffset + 1) % 1;
+                break;
+              }
+
+              case 'sparkle': {
+                // 3. Pulsing Sparkle / Stars
+                const isSparkle = (x * 7 + y * 13 + f * 5) % 9 === 0;
+                if (isSparkle) {
+                  hsl.l = Math.min(1, hsl.l + 0.35);
+                  hsl.s = Math.min(1, hsl.s + 0.2);
+                }
+                break;
+              }
+
+              case 'scanline': {
+                // 4. Hologram Scanline Wave
+                const scanY = Math.floor(progress * h);
+                if (y === scanY || y === (scanY + 1) % h) {
+                  hsl.l = Math.min(1, hsl.l + 0.3);
+                  hsl.s = Math.min(1, hsl.s + 0.2);
+                } else {
+                  hsl.l = Math.max(0.1, hsl.l * 0.85);
+                }
+                break;
+              }
+
+              case 'bounce': {
+                // 5. Breathing / Micro Bounce
+                const offsetY = Math.round(Math.sin(progress * Math.PI * 2) * 0.8);
+                targetY = Math.max(0, Math.min(h - 1, y + offsetY));
+                break;
+              }
+
+              case 'fireGlow': {
+                // 6. Fire / Flame Warm Glow
+                const flicker = Math.sin(f * 2 + y * 0.5) * 0.08;
+                hsl.h = (hsl.h + flicker * 0.2 + 1) % 1;
+                hsl.l = Math.min(0.9, Math.max(0.1, hsl.l + flicker));
+                break;
+              }
+
+              case 'matrix': {
+                // 7. Matrix Rain Flash
+                const dropPos = (Math.floor(progress * h * 2) + x * 2) % h;
+                if (y === dropPos) {
+                  hsl.h = 0.33; // Matrix Green accent
+                  hsl.l = 0.8;
+                }
+                break;
+              }
+
+              case 'disco': {
+                // 8. Party Disco Flash
+                if ((f + Math.floor(x / 4)) % 2 === 0) {
+                  hsl.h = (hsl.h + 0.05 * f) % 1;
+                  hsl.l = Math.min(0.85, hsl.l + 0.15);
+                }
+                break;
+              }
+
+              case 'dissolve': {
+                // 9. Pixel Dissolve / Particle Shift
+                if ((x + y + f) % 4 === 0) {
+                  newOpacity = Math.max(0.2, cell.opacity * 0.4);
+                }
+                break;
+              }
+
+              case 'vortex': {
+                // 10. Color Vortex Pulse
+                const distFromCenter = Math.sqrt(Math.pow(x - w/2, 2) + Math.pow(y - h/2, 2));
+                const wave = Math.sin(distFromCenter * 0.5 - progress * Math.PI * 2);
+                hsl.l = Math.min(0.9, Math.max(0.1, hsl.l + wave * 0.15));
+                break;
+              }
+            }
+
+            const newRgb = hslToRgb(hsl.h, hsl.s, hsl.l);
+            newColor = rgbToHex(newRgb.r, newRgb.g, newRgb.b);
+
+            frame[targetY][targetX] = { color: newColor, opacity: newOpacity };
+          }
+        }
+        generatedFrames.push(frame);
+      }
+      return generatedFrames;
+    }
+
+    function triggerAutoAnimationProcess(file) {
+      if (!file) return;
+      const img = new Image();
+      img.onload = () => {
+        state.baseImageFrame = rasterizeImageToGrid(img, state.width, state.height);
+        rebuildAutoAnimation();
+        showToast('Auto-Animation Created!');
+      };
+      img.src = URL.createObjectURL(file);
+    }
+
+    function rebuildAutoAnimation() {
+      if (!state.baseImageFrame) {
+        state.baseImageFrame = deepCopyPixels(state.frames[state.activeFrameIndex]);
+      }
+      const count = parseInt(autoFrameCount.value);
+      const style = animStylePreset.value;
+
+      state.frames = generatePresetFrames(state.baseImageFrame, style, count);
+      state.activeFrameIndex = 0;
+      saveHistory();
+      renderAll();
+      generateSVGOutput();
+    }
+
+    // --- SVG GENERATION & PREVIEW ---
+    function buildSVG() {
+      const numFrames = state.frames.length;
+      const frameDuration = (1 / state.fps).toFixed(3);
+      const totalDuration = (numFrames * frameDuration).toFixed(3);
+
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${state.width} ${state.height}" shape-rendering="crispEdges">\n`;
+
+      if (numFrames === 1) {
+        const frame = state.frames[0];
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            const cell = frame[y][x];
+            if (cell && cell.opacity > 0) {
+              const opAttr = cell.opacity < 1 ? ` fill-opacity="${cell.opacity}"` : '';
+              svg += `  <rect x="${x}" y="${y}" width="1" height="1" fill="${cell.color}"${opAttr}/>\n`;
+            }
+          }
+        }
+      } else {
+        state.frames.forEach((frame, idx) => {
+          const keyTimes = [];
+          const values = [];
+
+          for (let i = 0; i <= numFrames; i++) {
+            keyTimes.push((i / numFrames).toFixed(3));
+            values.push(i === idx || (i === numFrames && idx === 0) ? 'inline' : 'none');
+          }
+
+          const calcMode = 'calcMode="discrete"';
+          
+          svg += `  <g class="frame" display="${idx === 0 ? 'inline' : 'none'}">\n`;
+          svg += `    <animate attributeName="display" values="${values.join(';')}" keyTimes="${keyTimes.join(';')}" dur="${totalDuration}s" repeatCount="indefinite" ${calcMode}/>\n`;
+
+          for (let y = 0; y < state.height; y++) {
+            for (let x = 0; x < state.width; x++) {
+              const cell = frame[y][x];
+              if (cell && cell.opacity > 0) {
+                const opAttr = cell.opacity < 1 ? ` fill-opacity="${cell.opacity}"` : '';
+                svg += `    <rect x="${x}" y="${y}" width="1" height="1" fill="${cell.color}"${opAttr}/>\n`;
+              }
+            }
+          }
+          svg += `  </g>\n`;
+        });
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+
+    function generateSVGOutput() {
+      const svgStr = buildSVG();
+      svgOutput.value = svgStr;
+      svgPreviewContainer.innerHTML = svgStr;
+    }
+
+    // --- EVENT LISTENERS ---
+    function setupEventListeners() {
+      editorCanvas.addEventListener('pointerdown', handlePointerDown);
+      editorCanvas.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+
+      pencilBtn.addEventListener('click', () => { state.activeTool = 'pencil'; updateUI(); });
+      eraserBtn.addEventListener('click', () => { state.activeTool = 'eraser'; updateUI(); });
+      pickerBtn.addEventListener('click', () => { state.activeTool = 'picker'; updateUI(); });
+
+      undoBtn.addEventListener('click', undo);
+      redoBtn.addEventListener('click', redo);
+      clearBtn.addEventListener('click', () => {
+        state.frames[state.activeFrameIndex] = createEmptyPixels(state.width, state.height);
+        saveHistory();
+        renderAll();
+      });
+
+      nativeColor.addEventListener('input', (e) => {
+        state.currentColor = e.target.value.toUpperCase();
+        hexInput.value = state.currentColor;
+      });
+
+      hexInput.addEventListener('change', (e) => {
+        let val = e.target.value;
+        if (!val.startsWith('#')) val = '#' + val;
+        if (/^#[0-9A-F]{6}$/i.test(val)) {
+          state.currentColor = val.toUpperCase();
+          nativeColor.value = state.currentColor;
+        } else {
+          hexInput.value = state.currentColor;
+        }
+      });
+
+      opacitySlider.addEventListener('input', (e) => {
+        state.currentOpacity = parseInt(e.target.value) / 100;
+        opacityVal.textContent = `${e.target.value}%`;
+      });
+
+      addFrameBtn.addEventListener('click', () => {
+        state.frames.push(createEmptyPixels(state.width, state.height));
+        state.activeFrameIndex = state.frames.length - 1;
+        saveHistory();
+        renderAll();
+      });
+
+      dupFrameBtn.addEventListener('click', () => {
+        const copy = deepCopyPixels(state.frames[state.activeFrameIndex]);
+        state.frames.splice(state.activeFrameIndex + 1, 0, copy);
+        state.activeFrameIndex++;
+        saveHistory();
+        renderAll();
+      });
+
+      delFrameBtn.addEventListener('click', () => {
+        if (state.frames.length <= 1) {
+          showToast('Cannot delete last frame');
+          return;
+        }
+        state.frames.splice(state.activeFrameIndex, 1);
+        if (state.activeFrameIndex >= state.frames.length) {
+          state.activeFrameIndex = state.frames.length - 1;
+        }
+        saveHistory();
+        renderAll();
+      });
+
+      onionBtn.addEventListener('click', () => {
+        state.onionSkin = !state.onionSkin;
+        onionBtn.textContent = `Onion: ${state.onionSkin ? 'ON' : 'OFF'}`;
+        onionBtn.classList.toggle('active', state.onionSkin);
+        renderOnionCanvas();
+      });
+
+      playBtn.addEventListener('click', () => {
+        if (state.isPlaying) {
+          clearInterval(state.playInterval);
+          state.isPlaying = false;
+          playBtn.textContent = 'Play';
+          renderAll();
+        } else {
+          state.isPlaying = true;
+          playBtn.textContent = 'Pause';
+          const intervalMs = 1000 / state.fps;
+          state.playInterval = setInterval(() => {
+            state.activeFrameIndex = (state.activeFrameIndex + 1) % state.frames.length;
+            renderEditorCanvas();
+            renderTimeline();
+          }, intervalMs);
+        }
+      });
+
+      fpsSelect.addEventListener('change', (e) => {
+        state.fps = parseInt(e.target.value);
+        if (state.isPlaying) {
+          playBtn.click();
+          playBtn.click();
+        }
+      });
+
+      gridSizeSelect.addEventListener('change', (e) => {
+        const size = parseInt(e.target.value);
+        if (confirm('Changing grid size will reset current canvas. Continue?')) {
+          resetGrid(size, size);
+        } else {
+          gridSizeSelect.value = state.width;
+        }
+      });
+
+      // Auto-Animator Listeners
+      autoUploadTrigger.addEventListener('click', () => autoFileInput.click());
+      autoFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          triggerAutoAnimationProcess(e.target.files[0]);
+        }
+      });
+      reapplyPresetBtn.addEventListener('click', () => {
+        rebuildAutoAnimation();
+        showToast('Preset Re-Applied');
+      });
+
+      // Raw Image Import
+      fileTriggerBtn.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+          const img = new Image();
+          img.onload = () => {
+            state.frames[state.activeFrameIndex] = rasterizeImageToGrid(img, state.width, state.height);
+            state.baseImageFrame = deepCopyPixels(state.frames[state.activeFrameIndex]);
+            saveHistory();
+            renderAll();
+            showToast('Image Imported');
+          };
+          img.src = URL.createObjectURL(e.target.files[0]);
+        }
+      });
+
+      generateSvgBtn.addEventListener('click', () => {
+        generateSVGOutput();
+        showToast('SVG Generated');
+      });
+
+      copySvgBtn.addEventListener('click', () => {
+        if (!svgOutput.value) generateSVGOutput();
+        navigator.clipboard.writeText(svgOutput.value)
+          .then(() => showToast('SVG Copied to Clipboard'))
+          .catch(() => showToast('Failed to copy'));
+      });
+
+      downloadSvgBtn.addEventListener('click', () => {
+        if (!svgOutput.value) generateSVGOutput();
+        const blob = new Blob([svgOutput.value], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'animated-pixel.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      saveProjBtn.addEventListener('click', () => {
+        const projectData = {
+          width: state.width,
+          height: state.height,
+          fps: state.fps,
+          frames: state.frames
+        };
+        const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'pixel-animation-project.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      loadProjBtn.addEventListener('click', () => projInput.click());
+      projInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (data.width && data.height && data.frames) {
+              state.width = data.width;
+              state.height = data.height;
+              state.fps = data.fps || 10;
+              state.frames = data.frames;
+              state.activeFrameIndex = 0;
+              gridSizeSelect.value = state.width;
+              fpsSelect.value = state.fps;
+              saveHistory();
+              renderAll();
+              showToast('Project Loaded');
+            }
+          } catch (err) {
+            showToast('Invalid JSON file');
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
